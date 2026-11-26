@@ -12,3 +12,6 @@
 每阶段独立分支，先验收再合并。不提前扩展未验证功能；根据 MagicOS 实测调整架构。Phase 01 不做联网、完整分类、正式 UI 或严格锁定。维护 ACTIVE.md 与 handoff.md。
 
 Phase 01 扩展验收参见 tests/PHASE01_CAPABILITY_MATRIX.md，T01–T12 全部适用项目均需明确实测结论或限制说明。
+
+## 最新优先级调整
+按 tasks/NEXT_ONLINE_PLAN.md 执行，提前 Stage A 在线同步 + 绝对时间调度，Stage B 全天使用记录回传，Stage C ChatGPT 变更入口；原表是功能清单，不再作为强制串行顺序。拦截问题持续正常修复，分类复用已有实现；保留 Lab 与安全验收，在线版分开审计。
