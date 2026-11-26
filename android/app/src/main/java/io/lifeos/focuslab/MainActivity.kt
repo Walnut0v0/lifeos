@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         var mode by remember { mutableStateOf(store.mode) }
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
             Text("LifeOS Focus Lab", style = MaterialTheme.typography.headlineSmall)
-            Text("v0.1.3-poc · 离线系统验证 · ${when (phase) { Phase.ACTIVE -> "正在计时"; Phase.SCHEDULED -> "等待开始"; Phase.FAULT -> "状态异常，已解除"; Phase.IDLE -> "未开始或已结束" }}")
+            Text("v0.1.4-poc · 离线系统验证 · ${when (phase) { Phase.ACTIVE -> "正在计时"; Phase.SCHEDULED -> "等待开始"; Phase.FAULT -> "状态异常，已解除"; Phase.IDLE -> "未开始或已结束" }}")
             Button(onClick = { store.stop(); message = "已停止所有测试" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("停止所有测试 / 立即解除") }
             Row { listOf("诊断", "应用", "计时", "能力", "报告").forEachIndexed { i, title -> TextButton(onClick = { tab = i }, contentPadding = PaddingValues(8.dp)) { Text(title) } } }
             Text(message)
@@ -95,11 +95,12 @@ class MainActivity : ComponentActivity() {
                         Text("覆盖层最近情况：${store.overlayStatus}")
                         var duration by remember { mutableStateOf("1") }
                         var wait by remember { mutableStateOf("2") }
-                        var usageAssist by remember { mutableStateOf(false) }
+                        var usageAssist by remember { mutableStateOf(store.usageAssistOptIn) }
                         Row {
-                            Checkbox(usageAssist, onCheckedChange = { usageAssist = it })
+                            Checkbox(usageAssist, onCheckedChange = { usageAssist = it; store.usageAssistOptIn = it })
                             Text("本次允许使用已授权的使用情况访问，辅助判断桌面过渡窗口（最多60秒，不保存轨迹）", Modifier.padding(top = 8.dp))
                         }
+                        Text("增强识别：${if (SystemClock.elapsedRealtime() < ForegroundProbe.enabledUntilElapsed) "本次正在使用" else if (usageAssist) "已勾选，下一次手动开始时启用" else "未勾选"}")
                         OutlinedTextField(duration, { duration = it }, label = { Text("持续分钟：1–30") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(wait, { wait = it }, label = { Text("相对计划：几分钟后开始（1–1440）") }, modifier = Modifier.fillMaxWidth())
                         fun start(manual: Boolean, absolute: Long? = null) {
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
                                 require(at >= System.currentTimeMillis() - 1000 && at < System.currentTimeMillis() + 86_400_000) { "开始时间需在未来 24 小时内" }
                                 store.start(at, d * 60_000, manual)
                                 if (usageAssist && manual) ForegroundProbe.enableForTest(60)
+                                store.log(if (usageAssist && manual) "USAGE_ASSIST_ENABLED" else "USAGE_ASSIST_DISABLED")
                                 message = if (store.exact()) "测试已设置" else "已使用非精确闹钟：系统可能延迟，不能据此验收精确调度"
                             } catch (e: IllegalArgumentException) { message = e.message ?: "参数无效" }
                             catch (_: Exception) { store.stop("START_FAULT"); message = "无法安全开始，已解除测试" }

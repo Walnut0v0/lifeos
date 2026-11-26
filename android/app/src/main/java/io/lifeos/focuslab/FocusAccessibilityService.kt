@@ -69,8 +69,11 @@ class FocusAccessibilityService : AccessibilityService() {
         // Only an explicitly enabled, at-most-60-second test may consult recent usage metadata.
         // Full home events and all other protected/system windows still release immediately.
         val auxiliaryLauncherEvent = try {
-            overlay != null && pkg != null && !event.isFullScreen && store.phase() == Phase.ACTIVE &&
-                AppCatalog(this).isHome(pkg) && ForegroundProbe.targetStillResumed(this, store.targets)
+            if (overlay != null && pkg != null && !event.isFullScreen && store.phase() == Phase.ACTIVE && AppCatalog(this).isHome(pkg)) {
+                val decision = ForegroundProbe.decision(this, store.targets)
+                store.log(decision)
+                decision == "ASSIST_TARGET_CONFIRMED"
+            } else false
         } catch (_: Exception) { false }
         if (auxiliaryLauncherEvent) {
             store.log("LAUNCHER_AUXILIARY_EVENT_TARGET_STILL_RESUMED")

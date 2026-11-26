@@ -19,6 +19,7 @@ def sanitize_preferences(raw):
     root = ET.fromstring(raw)
     strings = {e.attrib.get('name'): e.text for e in root if e.tag == 'string'}
     result = {k: strings.get(k) for k in ('mode', 'overlay_status')}
+    result['usage_assist_opt_in'] = any(e.tag == 'boolean' and e.attrib.get('name') == 'usage_assist_opt_in' and e.attrib.get('value') == 'true' for e in root)
     result['target_count'] = sum(len(e) for e in root if e.attrib.get('name') == 'targets')
     session = json.loads(strings.get('session') or 'null')
     result['session'] = {k: session[k] for k in ('start', 'end', 'manual', 'elapsedEnd', 'boot', 'duration') if k in session} if isinstance(session, dict) else None

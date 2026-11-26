@@ -9,6 +9,9 @@ import org.json.JSONObject
 
 class LabStore(val context: Context) {
     private val prefs = context.getSharedPreferences("lab", Context.MODE_PRIVATE)
+    var usageAssistOptIn: Boolean
+        get() = prefs.getBoolean("usage_assist_opt_in", false)
+        set(value) { prefs.edit().putBoolean("usage_assist_opt_in", value).apply() }
     var overlayStatus: String
         get() = prefs.getString("overlay_status", "尚未进行覆盖层测试") ?: "尚未进行覆盖层测试"
         set(value) { prefs.edit().putString("overlay_status", value).apply() }
@@ -83,7 +86,7 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.1.3-poc")
+    fun report(): String = JSONObject().put("version", "0.1.4-poc")
         .put("api", Build.VERSION.SDK_INT).put("manufacturer", Build.MANUFACTURER)
         .put("android_release", Build.VERSION.RELEASE).put("mode", mode)
         .put("target_aliases", JSONArray(targets.indices.map { "TEST_APP_${it + 1}" }))
@@ -94,6 +97,7 @@ class LabStore(val context: Context) {
         .put("foreground_service_running", ShortTestService.running)
         .put("overlay_status", overlayStatus)
         .put("usage_assist_test_active", SystemClock.elapsedRealtime() < ForegroundProbe.enabledUntilElapsed)
+        .put("usage_assist_opt_in", usageAssistOptIn)
         .put("capability_snapshot_at", System.currentTimeMillis())
         .put("phase", phase().name).put("events", JSONArray(prefs.getString("events", "[]") ?: "[]"))
         .put("manual_results", JSONObject(prefs.getString("results", "{}") ?: "{}"))

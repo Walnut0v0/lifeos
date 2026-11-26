@@ -8,8 +8,10 @@ import android.os.SystemClock
 object ForegroundProbe {
     var enabledUntilElapsed = 0L
     fun enableForTest(seconds: Long) { enabledUntilElapsed = SystemClock.elapsedRealtime() + seconds.coerceIn(1, 60) * 1000 }
-    fun targetStillResumed(context: Context, targets: Set<String>): Boolean {
-        if (SystemClock.elapsedRealtime() >= enabledUntilElapsed || !usageGranted(context)) return false
+    fun decision(context: Context, targets: Set<String>): String {
+        if (enabledUntilElapsed == 0L) return "ASSIST_NOT_ENABLED"
+        if (SystemClock.elapsedRealtime() >= enabledUntilElapsed) return "ASSIST_EXPIRED"
+        if (!usageGranted(context)) return "ASSIST_PERMISSION_MISSING"
         return try {
             val end = System.currentTimeMillis()
             val events = context.getSystemService(UsageStatsManager::class.java).queryEvents(end - 5000, end)
@@ -23,7 +25,11 @@ object ForegroundProbe {
                     UsageEvents.Event.ACTIVITY_PAUSED -> state.paused(pkg)
                 }
             }
-            state.isTarget(targets)
-        } catch (_: Exception) { false }
+            when {
+                state.isTarget(targets) -> "ASSIST_TARGET_CONFIRMED"
+                state.candidate == null -> "ASSIST_NO_CURRENT_RESUME"
+                else -> "ASSIST_OTHER_APP_RESUMED"
+            }
+        } catch (_: Exception) { "ASSIST_QUERY_FAILED" }
     }
 }

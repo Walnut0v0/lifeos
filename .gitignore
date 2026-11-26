@@ -35,3 +35,4 @@ device-dumps/
 real-test-data/
 *.hprof
 __pycache__/
+.kotlin/

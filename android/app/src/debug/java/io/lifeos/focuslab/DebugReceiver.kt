@@ -17,12 +17,14 @@ class DebugReceiver : BroadcastReceiver() {
                     require(store.targets.isNotEmpty() && store.targets.none { AppCatalog(context).protected(it) })
                     val mode = intent.getStringExtra("mode") ?: "OVERLAY"
                     require(mode == "HOME" || mode == "OVERLAY")
+                    val assist = intent.getBooleanExtra("usage_assist", store.usageAssistOptIn)
+                    require(!assist || usageGranted(context))
                     store.mode = mode
                     store.start(System.currentTimeMillis(), seconds * 1000L, true)
-                    if (intent.getBooleanExtra("usage_assist", false)) {
-                        require(usageGranted(context))
+                    if (assist) {
                         ForegroundProbe.enableForTest(seconds.toLong())
                     }
+                    store.log(if (assist) "USAGE_ASSIST_ENABLED" else "USAGE_ASSIST_DISABLED")
                     resultData = "STARTED_BOUNDED_TEST"
                 }
                 "stop" -> { store.stop(); resultData = "STOPPED" }
