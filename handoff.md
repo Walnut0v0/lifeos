@@ -19,3 +19,5 @@
 所有基础及扩展入口详见INSTALL_AND_TEST.md。未知/静止前台不能保证自动开始时立即拦截；需最近5秒窗口事件，否则等待下一事件。UsageStats仅用户主动读取60秒样本，在内存展示不导出；系统聚合时间桶可能超出查询边界。模拟多段JSON仅校验往返与边界，不执行多段真实计划。厂商配置只手工确认，不伪造状态。日志上限100条。
 
 本地验证见tests/BUILD_VERIFICATION.md。手机/模拟器未连接，所有MagicOS项目NOT RUN，后续用户安装APK按矩阵填写报告；安全失败需先修复，验收前不合并main、不推进Phase02。CI会另行构建debug签名APK，签名与本地包可能不同，覆盖安装前须核对；签名私钥不进仓库。
+
+CI首次运行发现setup-android默认尝试安装已移除的`tools`包，失败于SDK准备阶段，尚未执行代码构建。已改为显式安装platform-tools、platforms;android-35、build-tools;35.0.0并关闭完整许可日志输出，重新触发验证；APK及应用源码未改动。
