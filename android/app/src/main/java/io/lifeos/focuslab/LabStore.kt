@@ -9,6 +9,9 @@ import org.json.JSONObject
 
 class LabStore(val context: Context) {
     private val prefs = context.getSharedPreferences("lab", Context.MODE_PRIVATE)
+    var overlayStatus: String
+        get() = prefs.getString("overlay_status", "尚未进行覆盖层测试") ?: "尚未进行覆盖层测试"
+        set(value) { prefs.edit().putString("overlay_status", value).apply() }
     var targets: Set<String>
         get() = prefs.getStringSet("targets", emptySet())!!.toSet()
         set(value) { stop("TARGETS_CHANGED"); prefs.edit().putStringSet("targets", value.toSet()).commit() }
@@ -32,6 +35,7 @@ class LabStore(val context: Context) {
     fun start(start: Long, duration: Long, manual: Boolean) {
         require(duration in 1..FocusPolicy.MAX_DURATION && start > 0)
         stop("REPLACED")
+        overlayStatus = "本次测试尚未显示覆盖层"
         val s = Session(start, start + duration, manual, if (manual) SystemClock.elapsedRealtime() + duration else 0, boot(), duration)
         val j = JSONObject().put("start", s.start).put("end", s.end).put("manual", s.manual)
             .put("elapsedEnd", s.elapsedEnd).put("boot", s.boot).put("duration", s.duration)
@@ -78,7 +82,7 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.1.0-poc")
+    fun report(): String = JSONObject().put("version", "0.1.1-poc")
         .put("api", Build.VERSION.SDK_INT).put("manufacturer", Build.MANUFACTURER)
         .put("android_release", Build.VERSION.RELEASE).put("mode", mode)
         .put("target_aliases", JSONArray(targets.indices.map { "TEST_APP_${it + 1}" }))
@@ -87,6 +91,7 @@ class LabStore(val context: Context) {
         .put("ordinary_overlay_allowed", Settings.canDrawOverlays(context))
         .put("battery_optimization_exempt", context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName))
         .put("foreground_service_running", ShortTestService.running)
+        .put("overlay_status", overlayStatus)
         .put("capability_snapshot_at", System.currentTimeMillis())
         .put("phase", phase().name).put("events", JSONArray(prefs.getString("events", "[]") ?: "[]"))
         .put("manual_results", JSONObject(prefs.getString("results", "{}") ?: "{}"))

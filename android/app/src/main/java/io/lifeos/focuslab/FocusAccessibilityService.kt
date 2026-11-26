@@ -24,6 +24,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private var foregroundAt = 0L
     private var overlay: View? = null
     private var overlayAt = 0L
+    private var overlayWindowId = -1
     private var lastAction = 0L
     private var lastPhase = Phase.IDLE
     private val recentActions = ArrayDeque<Long>()
@@ -43,7 +44,14 @@ class FocusAccessibilityService : AccessibilityService() {
         if (!::store.isInitialized || event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         // No text, source, className, nodes, screenshots or window hierarchy is accessed.
         val pkg = event.packageName?.toString()
-        if (pkg == packageName && overlay != null) return // Our own overlay is not a new foreground app.
+        val ownWindowId = overlayWindowId
+        // Compare window metadata with our own View; this does not retrieve screen content.
+        // A vendor can attribute our overlay's event to a different package.
+        if (overlay != null && ((ownWindowId >= 0 && event.windowId == ownWindowId) ||
+                ((ownWindowId < 0 || event.windowId < 0) && pkg == packageName))) {
+            store.log("OVERLAY_SELF_WINDOW_IGNORED")
+            return
+        }
         foreground = pkg
         foregroundAt = SystemClock.elapsedRealtime()
         if (pkg != null && pkg != packageName) { lastExternalPackage = pkg; eventCount++ }
@@ -60,14 +68,26 @@ class FocusAccessibilityService : AccessibilityService() {
             if (phase == Phase.ACTIVE && SystemClock.elapsedRealtime() - foregroundAt < 5_000) enforce(null)
             lastPhase = phase
         }
-        if (phase != Phase.ACTIVE || !unlocked()) clearOverlay()
+        if (phase != Phase.ACTIVE) clearOverlay("计时已结束或测试已停止")
+        else if (!unlocked()) clearOverlay("手机已锁屏或屏幕已关闭，已让出画面")
+        else if (overlay?.isAttachedToWindow == false) clearOverlay("系统已移除覆盖层窗口，计时仍在继续")
         if (overlay != null && SystemClock.elapsedRealtime() - overlayAt > 10_000) store.stop("OVERLAY_SAFETY_TIMEOUT")
     }
     private fun enforce(eventAt: Long?) {
-        if (store.mode == "DETECT") { clearOverlay(); return }
+        if (store.mode == "DETECT") { clearOverlay("当前模式只检测，不显示拦截画面"); return }
         val pkg = foreground
-        if (pkg == null || !unlocked() || store.phase() != Phase.ACTIVE || pkg !in store.targets) { clearOverlay(); return }
-        if (!FocusPolicy.shouldBlock(true, true, AppCatalog(this).protected(pkg), unlocked())) { clearOverlay(); return }
+        if (pkg == null) { clearOverlay("收到无法识别所属应用的窗口事件，已让出画面"); return }
+        if (!unlocked()) { clearOverlay("手机已锁屏或屏幕已关闭，已让出画面"); return }
+        if (store.phase() != Phase.ACTIVE) { clearOverlay("计时已结束或测试已停止"); return }
+        if (pkg !in store.targets) {
+            val reason = when {
+                pkg == packageName -> "已返回 LifeOS 页面，覆盖层已撤下"
+                AppCatalog(this).protected(pkg) -> "收到系统或受保护应用窗口事件，已让出画面；计时仍继续"
+                else -> "收到未选中应用的窗口事件，已让出画面；计时仍继续"
+            }
+            clearOverlay(reason); return
+        }
+        if (!FocusPolicy.shouldBlock(true, true, AppCatalog(this).protected(pkg), unlocked())) { clearOverlay("当前窗口属于受保护应用，已让出画面"); return }
         val now = SystemClock.elapsedRealtime()
         if (overlay != null || now - lastAction < 800) return
         while (recentActions.isNotEmpty() && now - recentActions.first() > 10_000) recentActions.removeFirst()
@@ -90,17 +110,29 @@ class FocusAccessibilityService : AccessibilityService() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             setPadding(32, 64, 32, 64); setBackgroundColor(Color.rgb(241, 245, 249))
             addView(TextView(context).apply { text = "专注拦截测试\n\n覆盖层最多显示 10 秒，随后自动停止本次测试。"; textSize = 22f; setTextColor(Color.BLACK) })
-            addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay() } })
+            addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay("已点击返回桌面，计时仍继续") } })
             addView(Button(context).apply { text = "停止所有测试并解除"; setOnClickListener { store.stop() } })
         }
         val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
         getSystemService(WindowManager::class.java).addView(layout, params)
         overlay = layout; overlayAt = SystemClock.elapsedRealtime()
+        // Assign an event source to OUR View to obtain its window metadata. Never read a node/source.
+        @Suppress("DEPRECATION")
+        val ownEvent = AccessibilityEvent.obtain()
+        try { ownEvent.setSource(layout); overlayWindowId = ownEvent.windowId }
+        finally { @Suppress("DEPRECATION") ownEvent.recycle() }
+        store.overlayStatus = "覆盖层已显示；若画面消失后仍显示此提示，需进一步检查系统窗口行为"
     }
-    fun clearOverlay() {
+    fun clearOverlay(reason: String = "测试已停止或配置已重置") {
+        if (overlay == null) return
         overlay?.let { try { getSystemService(WindowManager::class.java).removeViewImmediate(it) } catch (_: Exception) { } }
         overlay = null
+        overlayWindowId = -1
+        if (::store.isInitialized) {
+            store.overlayStatus = reason
+            store.log("OVERLAY_REMOVED")
+        }
     }
     override fun onInterrupt() { if (::store.isInitialized) store.stop("SERVICE_INTERRUPTED") }
     override fun onUnbind(intent: android.content.Intent?): Boolean {

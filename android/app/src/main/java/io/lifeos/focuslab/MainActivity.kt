@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
         var mode by remember { mutableStateOf(store.mode) }
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
             Text("LifeOS Focus Lab", style = MaterialTheme.typography.headlineSmall)
-            Text("v0.1.0-poc · 离线系统验证 · $phase")
+            Text("v0.1.1-poc · 离线系统验证 · ${when (phase) { Phase.ACTIVE -> "正在计时"; Phase.SCHEDULED -> "等待开始"; Phase.FAULT -> "状态异常，已解除"; Phase.IDLE -> "未开始或已结束" }}")
             Button(onClick = { store.stop(); message = "已停止所有测试" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("停止所有测试 / 立即解除") }
             Row { listOf("诊断", "应用", "计时", "能力", "报告").forEachIndexed { i, title -> TextButton(onClick = { tab = i }, contentPadding = PaddingValues(8.dp)) { Text(title) } } }
             Text(message)
@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
                         Text("设备：${Build.MANUFACTURER} / Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}\nMagicOS 版本请在系统设置中核对。")
                         Text("无障碍连接：${FocusAccessibilityService.live != null}\n精确闹钟：${store.exact()}\n通知：${getSystemService(NotificationManager::class.java).areNotificationsEnabled()}\n电池优化豁免：${getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)}")
                         Text("T02 最近外部窗口包名（仅内存）：\n${FocusAccessibilityService.lastExternalPackage}\n窗口事件累计：${FocusAccessibilityService.eventCount}（不是应用切换准确率）")
+                        Text("覆盖层最近情况：${store.overlayStatus}")
                         Text("无障碍仅读取窗口事件包名，不读取文字、输入或消息。启用前请阅读系统授权说明。")
                         Button(onClick = { open(Settings.ACTION_ACCESSIBILITY_SETTINGS) }) { Text("打开无障碍设置") }
                         Button(onClick = { if (Build.VERSION.SDK_INT >= 31) open(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, true) }) { Text("精确闹钟设置（Android 12+）") }
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
                             Row { RadioButton(selected = mode == key, onClick = { store.mode = key; mode = key }); Text(title, Modifier.padding(top = 12.dp)) }
                         }
                         Text("改变模式、目标会停止当前测试。仅检测可不选目标。拦截请先选一个非关键第三方应用。")
+                        Text("覆盖层最近情况：${store.overlayStatus}")
                         var duration by remember { mutableStateOf("1") }
                         var wait by remember { mutableStateOf("2") }
                         OutlinedTextField(duration, { duration = it }, label = { Text("持续分钟：1–30") }, modifier = Modifier.fillMaxWidth())

@@ -4,6 +4,8 @@
 
 当前阶段：**Phase 01 — MagicOS 11 真机兼容性验证**。目标设备荣耀手机，实际 Android API Level 由测试应用读取。先交付离线 LifeOS Focus Lab APK，再根据实测确定正式架构。
 
+当前测试补丁v0.1.1：针对B覆盖层1–2秒消失补充自身窗口识别及中文撤除原因；[本轮简单复测步骤](docs/OVERLAY_RETEST.md)。尚未确认MagicOS根因已修复。正式在线计划自动同步目标已记录为R15，当前包继续离线验证。
+
 ## 文档导航
 - [完整需求](docs/REQUIREMENTS.md)
 - [架构与技术方案](docs/ARCHITECTURE.md)

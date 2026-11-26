@@ -20,6 +20,8 @@
 ## AccessibilityService 白名单能力
 canRetrieveWindowContent=false；不声明截图、手势能力（或显式 false，依 SDK 支持）。仅订阅必要的窗口切换事件（优先 TYPE_WINDOW_STATE_CHANGED）；仅取必要的 event.packageName 和时间/事件类型。不读取 event.text、event.source、窗口节点、getRootInActiveWindow()、输入或通知内容。不订阅文本变化等无关事件。仅必要的返回桌面和自有覆盖层；不得自动操作其他应用或授权页面。
 
+v0.1.1可在内存中比较event.windowId与自有覆盖层窗口ID：通过公开AccessibilityRecord.setSource(自有View)赋值一个临时事件并获取该事件的windowId；不读取event.source、其他窗口对象或节点，不保存/导出原始窗口ID。撤除原因仅保存固定中文说明和固定诊断代码，不含其他应用名称、包名或内容。未知窗口与系统安全窗口继续放行，不通过忽略全部系统事件延长覆盖层。
+
 ## 设备安全
 电话及紧急呼叫、锁屏/解锁、桌面、输入法、系统设置/权限、系统必要界面、应用自身始终放行。不干预权限撤销、卸载、强制停止。不使用 Root、Device Owner、隐藏进程或阻止设置访问；第一阶段仅测试显式选中的非关键应用，限制时长有限，提供全局停止按钮并尽可能提供通知停止入口。通知不可用时仍能从自身应用停止。异常、权限失效、状态未知、配置损坏均 Fail-open；避免拦截循环和覆盖锁屏/权限/紧急页面。
 
