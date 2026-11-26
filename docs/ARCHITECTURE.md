@@ -30,3 +30,6 @@ android/（app、Gradle wrapper、构建配置）；docs/；tests/；tasks/ACTIV
 - https://developer.android.com/develop/background-work/services/alarms/schedule
 - https://developer.android.com/reference/android/os/SystemClock
 - https://developer.android.com/topic/security/data
+
+## Phase 01 能力探索
+以 tests/PHASE01_CAPABILITY_MATRIX.md 为完整验证矩阵。权限诊断区分公开 API 检测与厂商手动确认；UsageStats 可选补充前台事件与使用时长，前台服务、悬浮窗、屏幕固定独立验证，依据结果选择最少必要权限。荣耀卡片锁定和后台管理通过手动系统配置验证。高级受管设备机制仅调查，另行授权专用设备实验；普通应用不承诺禁止用户强停、撤权或卸载。
