@@ -9,6 +9,29 @@ import org.json.JSONObject
 
 class LabStore(val context: Context) {
     private val prefs = context.getSharedPreferences("lab", Context.MODE_PRIVATE)
+    val isWhitelistSession: Boolean get() = prefs.getString("policy", "LAB") == "WHITELIST" && session() != null
+    var whitelist: Set<String>
+        get() = prefs.getStringSet("whitelist", emptySet())!!.toSet()
+        set(value) {
+            AppRules(context).replaceEffectiveSet(value)
+        }
+    val managedApps: Set<String> get() = prefs.getStringSet("managed_apps", emptySet())!!.toSet()
+    val blockedApps: Set<String> get() = if (isWhitelistSession) managedApps - whitelist else targets
+    fun remainingMillis(): Long = session()?.let { if (it.manual) it.elapsedEnd - SystemClock.elapsedRealtime() else it.end - System.currentTimeMillis() }?.coerceAtLeast(0) ?: 0
+    fun startWhitelist(duration: Long, managedSnapshot: Set<String>? = null, appSnapshot: List<LabApp>? = null) {
+        require(duration in 1000..FocusPolicy.MAX_DURATION)
+        require(FocusAccessibilityService.live != null) { "请先开启应用识别服务" }
+        require(usageGranted(context)) { "请先允许前台应用识别" }
+        val catalog = AppCatalog(context)
+        val apps = appSnapshot ?: catalog.apps()
+        val managed = managedSnapshot ?: apps.filterNot { catalog.protected(it.packageName) }.map { it.packageName }.toSet()
+        if (session() != null) stop("WHITELIST_REPLACED")
+        AppRules(context).refresh(apps)
+        start(System.currentTimeMillis(), duration, true, "WHITELIST")
+        check(prefs.edit().putStringSet("managed_apps", managed).commit())
+        ForegroundProbe.enableForFocus(remainingMillis())
+        log("WHITELIST_STARTED")
+    }
     var usageAssistOptIn: Boolean
         get() = prefs.getBoolean("usage_assist_opt_in", false)
         set(value) { prefs.edit().putBoolean("usage_assist_opt_in", value).apply() }
@@ -24,6 +47,7 @@ class LabStore(val context: Context) {
     fun boot(): Int = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
     fun session(): Session? = try {
         prefs.getString("session", null)?.let { raw ->
+            require(prefs.getString("policy", "LAB") in setOf("LAB", "WHITELIST"))
             val j = JSONObject(raw)
             Session(j.getLong("start"), j.getLong("end"), j.getBoolean("manual"), j.getLong("elapsedEnd"), j.getInt("boot"), j.getLong("duration"))
         }
@@ -35,21 +59,22 @@ class LabStore(val context: Context) {
         if (current != null && result == Phase.IDLE) stop("SESSION_EXPIRED")
         return result
     }
-    fun start(start: Long, duration: Long, manual: Boolean) {
+    fun start(start: Long, duration: Long, manual: Boolean, policy: String = "LAB") {
         require(duration in 1..FocusPolicy.MAX_DURATION && start > 0)
+        require(policy == "LAB" || policy == "WHITELIST")
         stop("REPLACED")
         overlayStatus = "本次测试尚未显示覆盖层"
         val s = Session(start, start + duration, manual, if (manual) SystemClock.elapsedRealtime() + duration else 0, boot(), duration)
         val j = JSONObject().put("start", s.start).put("end", s.end).put("manual", s.manual)
             .put("elapsedEnd", s.elapsedEnd).put("boot", s.boot).put("duration", s.duration)
-        check(prefs.edit().putString("session", j.toString()).commit())
+        check(prefs.edit().putString("session", j.toString()).putString("policy", policy).commit())
         log("SESSION_SAVED")
         reschedule()
         notice()
     }
     fun stop(code: String = "USER_STOP") {
         ForegroundProbe.enabledUntilElapsed = 0L
-        prefs.edit().remove("session").commit()
+        prefs.edit().remove("session").remove("policy").commit()
         val alarms = context.getSystemService(AlarmManager::class.java)
         alarms.cancel(pending(1)); alarms.cancel(pending(2))
         context.getSystemService(NotificationManager::class.java).cancel(1)
@@ -67,6 +92,7 @@ class LabStore(val context: Context) {
         a.cancel(pending(1)); a.cancel(pending(2))
         val p = phase()
         if (p == Phase.IDLE || p == Phase.FAULT) { stop("EXPIRED_OR_INVALID"); return }
+        if (isWhitelistSession && usageGranted(context)) ForegroundProbe.enableForFocus(remainingMillis())
         fun schedule(id: Int, at: Long) {
             val type = if (s.manual) AlarmManager.ELAPSED_REALTIME_WAKEUP else AlarmManager.RTC_WAKEUP
             try {
@@ -86,9 +112,14 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.1.4-poc")
+    fun report(): String = JSONObject().put("version", "0.3.0-alpha")
+        .put("manual_category_count", AppRules(context).userCategories.size)
+        .put("app_exception_count", AppRules(context).appOverrides.size)
+        .put("allowed_category_count", AppRules(context).allowedCategories.size)
+        .put("whitelist_session", isWhitelistSession).put("whitelist_count", whitelist.size)
+        .put("managed_count", managedApps.size).put("remaining_ms", remainingMillis())
         .put("api", Build.VERSION.SDK_INT).put("manufacturer", Build.MANUFACTURER)
-        .put("android_release", Build.VERSION.RELEASE).put("mode", mode)
+        .put("android_release", Build.VERSION.RELEASE).put("mode", if (isWhitelistSession) "WHITELIST" else mode)
         .put("target_aliases", JSONArray(targets.indices.map { "TEST_APP_${it + 1}" }))
         .put("exact_alarm", exact()).put("service_connected", FocusAccessibilityService.live != null)
         .put("notification_enabled", context.getSystemService(NotificationManager::class.java).areNotificationsEnabled())
@@ -112,8 +143,9 @@ class LabStore(val context: Context) {
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getBroadcast(context, 3, Intent(context, ScheduleReceiver::class.java).setAction("STOP"), PendingIntent.FLAG_IMMUTABLE)
         try { n.notify(1, Notification.Builder(context, "lab").setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("LifeOS 测试已配置").setContentText("可随时打开应用或点击停止解除测试")
-            .setContentIntent(open).addAction(Notification.Action.Builder(null, "停止所有测试", stop).build()).build()) }
+            .setContentTitle(if (isWhitelistSession) "正在专注 · ${countdownText(remainingMillis())}" else "LifeOS 测试已配置")
+            .setContentText(if (isWhitelistSession) "点此返回计时页，白名单应用可用" else "可随时打开应用或点击停止解除测试")
+            .setContentIntent(open).apply { if (!isWhitelistSession) addAction(Notification.Action.Builder(null, "停止所有测试", stop).build()) }.build()) }
         catch (_: SecurityException) { log("NOTIFICATION_UNAVAILABLE") }
     }
 }

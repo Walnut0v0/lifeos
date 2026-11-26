@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState); store = LabStore(this)
         experiments = CapabilityExperiments(this)
         experimentsRef = java.lang.ref.WeakReference(experiments)
-        setContent { MaterialTheme { Surface { LabScreen() } } }
+        setContent { MaterialTheme(colorScheme = lightColorScheme(primary = androidx.compose.ui.graphics.Color(0xFF245844), background = androidx.compose.ui.graphics.Color(0xFFF5F7F2), surface = androidx.compose.ui.graphics.Color(0xFFF5F7F2))) { Surface { AppRoot() } } }
     }
     override fun onPause() { if (::experiments.isInitialized) experiments.removeOverlay(); super.onPause() }
     override fun onDestroy() {
@@ -55,6 +55,17 @@ class MainActivity : ComponentActivity() {
     private fun open(action: String, ownPackage: Boolean = false) {
         try { startActivity(Intent(action).apply { if (ownPackage) data = Uri.parse("package:$packageName") }) }
         catch (_: Exception) { store.log("SETTINGS_UNAVAILABLE") }
+    }
+    @Composable private fun AppRoot() {
+        var lab by remember { mutableStateOf(false) }
+        var pulse by remember { mutableIntStateOf(0) }
+        LaunchedEffect(Unit) { while (true) { delay(250); pulse++ } }
+        val active = remember(pulse) { store.phase() == Phase.ACTIVE && store.isWhitelistSession }
+        if (!lab || active) FocusHome(this, store, active, pulse) { lab = true }
+        else Column(Modifier.fillMaxSize()) {
+            TextButton(onClick = { lab = false }) { Text("返回专注主页") }
+            Box(Modifier.weight(1f)) { LabScreen() }
+        }
     }
     @Composable private fun LabScreen() {
         var pulse by remember { mutableIntStateOf(0) }
