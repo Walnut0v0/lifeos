@@ -5,7 +5,7 @@
 
 ## 自动验证
 lab：22项单元测试0失败；Lint0错误/43警告；assemble及release Manifest生成成功。
-online：22项单元测试0失败；Lint0错误/73警告；assemble及release Manifest生成成功。
+online：22项单元测试0失败；Lint0错误/74警告；assemble及release Manifest生成成功。
 
 两份APK签名验证通过且证书一致。源码、两变体合并Manifest及APK独立权限审计通过；Lab无INTERNET，online仅允许额外INTERNET/ACCESS_NETWORK_STATE/WAKE_LOCK。release均不含DebugReceiver。git diff --check通过。测试只用模拟数据，不保存真实应用清单或轨迹。
 
@@ -17,3 +17,5 @@ NOT RUN。用户选择先完成开发和安装包，本轮不安装或操作手�
 
 ## 已知边界
 详细区间可分批上传；本机重新汇总当日/昨日，系统保留事件的实际范围可能不足。未知屏幕/锁状态单独计时；最晚RESUMED为前台估计，分屏不测量。计划匹配仅最近缓存版本+当前规则，实际有效管控时间为null。用户可独立停止采集/上传、预览、保留期及删本机/私有服务数据。没有改真实日程或自动化，没有读取消息/节点/屏幕。
+
+数据源更换会关闭自动执行并清除旧源快照，避免不同源revision互相阻塞；上传许可也会重置。旧源在途响应在快照锁内校验来源，不允许写回新源缓存。强制刷新/ChatGPT返回会替换排队中的重试，避免被旧退避任务延后。此状态转换源码已复核，仍待真机交互验证。

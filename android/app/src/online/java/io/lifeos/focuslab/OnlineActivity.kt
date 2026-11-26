@@ -124,7 +124,7 @@ class OnlineActivity : ComponentActivity() {
             TextButton(onClick = { scope.launch {
                 setting("usage_upload", false)
                 val current = SyncConfig(this@OnlineActivity).read()
-                val result = withContext(Dispatchers.IO) { runCatching { require(current != null); ExchangeClient(current).deleteUsage() } }
+                val result = withContext(Dispatchers.IO) { runCatching { require(current != null); SyncWorker.deleteRemote(current) } }
                 message = if (result.isSuccess) "已删除此交换服务中的统计，上传已关闭" else "未能确认云端删除，请检查连接后重试"
             } }) { Text("删除私有交换服务中的统计") }
             TextButton(onClick = { plans.armed = false; PlanRuntime.reconcile(this@OnlineActivity, true); SyncConfig(this@OnlineActivity).clear(); credentials = null; token = ""; endpoint = ""; setting("usage_upload", false); message = "已断开同步，计划自动执行关闭" }) { Text("断开私有同步") }

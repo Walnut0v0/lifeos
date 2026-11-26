@@ -51,7 +51,10 @@ private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
     return output.toByteArray()
 }
 class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
-    companion object { private val lock = Any() }
+    companion object {
+        private val lock = Any()
+        fun deleteRemote(credentials: SyncCredentials) = synchronized(lock) { ExchangeClient(credentials).deleteUsage() }
+    }
     override fun doWork(): Result = synchronized(lock) { perform() }
     private fun perform(): Result {
         val context = applicationContext
@@ -62,7 +65,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
             }
             val credentials = SyncConfig(context).read() ?: return Result.success()
             val client = ExchangeClient(credentials)
-            val changed = plans.accept(client.fetchPlan())
+            val raw = client.fetchPlan()
+            if (isStopped) return Result.success()
+            val changed = plans.accept(raw, credentials)
             if (changed || plans.prefs.getStringSet("prepared_managed", null) == null) PlanRuntime.prepare(context)
             plans.prefs.edit().putLong("last_sync", System.currentTimeMillis()).putString("sync_status", "已同步").commit()
             PlanRuntime.reconcile(context, true)
@@ -73,6 +78,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
             }
             return Result.success()
         } catch (error: Exception) {
+            if (error.message == "SOURCE_CHANGED" || isStopped) return Result.success()
             val status = when {
                 error.message == "AUTH_REQUIRED" -> "访问授权失效，保留未过期缓存"
                 error.message == "REVISION_CONFLICT" -> "版本倒退或同版本内容冲突，拒绝替换缓存"
@@ -101,7 +107,7 @@ object SyncWork {
         val now = android.os.SystemClock.elapsedRealtime()
         if (!force && lastRequest > 0 && now - lastRequest < 30_000) return
         lastRequest = now
-        WorkManager.getInstance(context).enqueueUniqueWork("exchange-now", ExistingWorkPolicy.KEEP,
+        WorkManager.getInstance(context).enqueueUniqueWork("exchange-now", if (force) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<SyncWorker>().build())
     }
 }

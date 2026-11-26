@@ -27,11 +27,13 @@ class SyncConfig(private val context: Context) {
         val uri = URI(endpoint.trim().trimEnd('/'))
         require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.query == null && uri.fragment == null)
         require(token.length in 24..512 && token.none { it.isWhitespace() })
-        if (read()?.endpoint != uri.toString()) PlanStore(context).prefs.edit().putBoolean("usage_upload", false).putBoolean("usage_details_upload", false).commit()
+        val sourceChanged = read()?.endpoint != uri.toString()
+        if (sourceChanged) PlanStore(context).prefs.edit().putBoolean("usage_upload", false).putBoolean("usage_details_upload", false).commit()
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
         val raw = JSONObject().put("endpoint", uri.toString()).put("token", token).toString().toByteArray()
         val data = cipher.iv + cipher.doFinal(raw)
         check(prefs.edit().putString("sealed", Base64.encodeToString(data, Base64.NO_WRAP)).commit())
+        if (sourceChanged) { PlanStore(context).resetSource(); PlanRuntime.reconcile(context, true) }
     }
     fun read(): SyncCredentials? = runCatching {
         val data = Base64.decode(prefs.getString("sealed", null) ?: return null, Base64.NO_WRAP)
