@@ -1,0 +1,36 @@
+# Local Android/build
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+# Signing and credentials
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+google-services.json
+# Private runtime records
+private/
+**/private/
+local-data/
+**/local-data/
+exports/
+**/exports/
+logs/
+**/logs/
+*.log
+*.db
+*.sqlite*
+# Device-specific reports and dumps
+device-dumps/
+real-test-data/
+*.hprof
