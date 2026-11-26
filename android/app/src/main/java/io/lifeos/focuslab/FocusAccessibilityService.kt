@@ -1,0 +1,112 @@
+package io.lifeos.focuslab
+
+import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.os.*
+import android.view.*
+import android.view.accessibility.AccessibilityEvent
+import android.widget.*
+
+class FocusAccessibilityService : AccessibilityService() {
+    companion object {
+        private var reference = java.lang.ref.WeakReference<FocusAccessibilityService>(null)
+        val live: FocusAccessibilityService? get() = reference.get()
+        var lastExternalPackage: String = "尚无事件"
+            private set
+        var eventCount = 0
+            private set
+    }
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var store: LabStore
+    private var foreground: String? = null
+    private var foregroundAt = 0L
+    private var overlay: View? = null
+    private var overlayAt = 0L
+    private var lastAction = 0L
+    private var lastPhase = Phase.IDLE
+    private val recentActions = ArrayDeque<Long>()
+    private val tick = object : Runnable {
+        override fun run() {
+            try { reconcile() } catch (_: Exception) { store.stop("SERVICE_FAULT") }
+            handler.postDelayed(this, 250)
+        }
+    }
+    override fun onServiceConnected() {
+        reference = java.lang.ref.WeakReference(this); store = LabStore(this)
+        store.log("SERVICE_CONNECTED")
+        try { store.reschedule() } catch (_: Exception) { store.stop("CONNECT_FAULT") }
+        handler.post(tick)
+    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (!::store.isInitialized || event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        // No text, source, className, nodes, screenshots or window hierarchy is accessed.
+        val pkg = event.packageName?.toString()
+        if (pkg == packageName && overlay != null) return // Our own overlay is not a new foreground app.
+        foreground = pkg
+        foregroundAt = SystemClock.elapsedRealtime()
+        if (pkg != null && pkg != packageName) { lastExternalPackage = pkg; eventCount++ }
+        if (pkg == "com.android.settings") store.log("SETTINGS_WINDOW_OBSERVED")
+        try { enforce(event.eventTime) } catch (_: Exception) { store.stop("EVENT_FAULT") }
+    }
+    private fun unlocked(): Boolean = !getSystemService(KeyguardManager::class.java).isKeyguardLocked &&
+        getSystemService(PowerManager::class.java).isInteractive
+    fun reconcile() {
+        val phase = store.phase()
+        if (phase != lastPhase) {
+            store.log(if (phase == Phase.ACTIVE) "STATE_ACTIVE" else "STATE_INACTIVE")
+            // Use only a recent known foreground package at the start boundary; otherwise await an event.
+            if (phase == Phase.ACTIVE && SystemClock.elapsedRealtime() - foregroundAt < 5_000) enforce(null)
+            lastPhase = phase
+        }
+        if (phase != Phase.ACTIVE || !unlocked()) clearOverlay()
+        if (overlay != null && SystemClock.elapsedRealtime() - overlayAt > 10_000) store.stop("OVERLAY_SAFETY_TIMEOUT")
+    }
+    private fun enforce(eventAt: Long?) {
+        if (store.mode == "DETECT") { clearOverlay(); return }
+        val pkg = foreground
+        if (pkg == null || !unlocked() || store.phase() != Phase.ACTIVE || pkg !in store.targets) { clearOverlay(); return }
+        if (!FocusPolicy.shouldBlock(true, true, AppCatalog(this).protected(pkg), unlocked())) { clearOverlay(); return }
+        val now = SystemClock.elapsedRealtime()
+        if (overlay != null || now - lastAction < 800) return
+        while (recentActions.isNotEmpty() && now - recentActions.first() > 10_000) recentActions.removeFirst()
+        if (recentActions.size >= 8) { store.stop("LOOP_GUARD_STOP"); return }
+        recentActions.addLast(now); lastAction = now
+        when (store.mode) {
+            "HOME" -> {
+                val success = performGlobalAction(GLOBAL_ACTION_HOME)
+                store.log(if (success) "HOME_REQUEST_ACCEPTED" else "HOME_REQUEST_FAILED", eventAt?.let { SystemClock.uptimeMillis() - it })
+                if (!success) store.stop("HOME_FAIL_OPEN")
+            }
+            "OVERLAY" -> { showOverlay(); store.log("OVERLAY_ATTACHED", eventAt?.let { SystemClock.uptimeMillis() - it }) }
+            "DETECT" -> Unit
+            else -> store.stop("MODE_INVALID")
+        }
+    }
+    private fun showOverlay() {
+        if (overlay != null) return
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            setPadding(32, 64, 32, 64); setBackgroundColor(Color.rgb(241, 245, 249))
+            addView(TextView(context).apply { text = "专注拦截测试\n\n覆盖层最多显示 10 秒，随后自动停止本次测试。"; textSize = 22f; setTextColor(Color.BLACK) })
+            addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay() } })
+            addView(Button(context).apply { text = "停止所有测试并解除"; setOnClickListener { store.stop() } })
+        }
+        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
+        getSystemService(WindowManager::class.java).addView(layout, params)
+        overlay = layout; overlayAt = SystemClock.elapsedRealtime()
+    }
+    fun clearOverlay() {
+        overlay?.let { try { getSystemService(WindowManager::class.java).removeViewImmediate(it) } catch (_: Exception) { } }
+        overlay = null
+    }
+    override fun onInterrupt() { if (::store.isInitialized) store.stop("SERVICE_INTERRUPTED") }
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        if (::store.isInitialized) store.stop("SERVICE_UNBOUND")
+        shutdown(); return super.onUnbind(intent)
+    }
+    private fun shutdown() { handler.removeCallbacksAndMessages(null); clearOverlay(); if (live === this) reference.clear(); foreground = null; lastExternalPackage = "服务已断开" }
+    override fun onDestroy() { shutdown(); super.onDestroy() }
+}

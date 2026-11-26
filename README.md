@@ -17,6 +17,6 @@
 
 第一阶段扩展测试：[完整授权与系统能力矩阵](tests/PHASE01_CAPABILITY_MATRIX.md)。
 
-当前仅初始化文档，尚无 Android 工程、APK 或真机测试结果。Codex 从 ACTIVE.md 开始，在 phase01-poc 分支开发。
+已实现 `android/` Kotlin/Compose 测试工程、Gradle wrapper、核心单元测试、权限审计脚本和 GitHub Actions。在 `phase01-poc` 分支交付离线测试 APK。操作见 [安装与 T01–T12 指南](docs/INSTALL_AND_TEST.md)，本地验证见 [构建验证记录](tests/BUILD_VERIFICATION.md)。MagicOS 真机测试尚未执行，Phase 01 尚未最终验收，不合并 main。
 
 允许用户授权后向受控私有目的地共享应用名称/包名清单、分类及详细使用记录；这些元数据可能暴露生活习惯，须可预览、可选择、可撤销同步。禁止读取或存储消息、屏幕文字、输入、通知正文等个人内容。公开仓库仅保存代码、通用文档、模拟数据和审查通过的脱敏报告。Phase 01 APK 完全离线。

@@ -1,6 +1,6 @@
 # Phase 01 兼容性报告模板
 
-状态：NOT RUN（尚无 APK 或真机测试结果）。
+状态：NOT RUN（测试 APK 已构建；电脑未连接手机，全部真机项目尚未执行）。本地构建/审计单独见 BUILD_VERIFICATION.md，不代表实机通过。
 
 ## 环境
 APK 版本/commit/SHA256：

@@ -1,0 +1,1 @@
+<resources><string name="accessibility_description">仅识别切换窗口的应用包名，对您选中的测试应用返回桌面或显示测试覆盖层。不读取屏幕文字、消息或输入内容。可随时停止或撤销授权。</string></resources>
