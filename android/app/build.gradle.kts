@@ -10,10 +10,15 @@ android {
         applicationId = "io.lifeos.focuslab"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "0.3.0-alpha"
+        versionCode = 30
+        versionName = "0.4.0-alpha"
     }
-    buildFeatures { compose = true }
+    flavorDimensions += "connectivity"
+    productFlavors {
+        create("lab") { dimension = "connectivity" }
+        create("online") { dimension = "connectivity" }
+    }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
 }
@@ -23,4 +28,6 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.7.8")
     implementation("androidx.compose.foundation:foundation:1.7.8")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
+    "onlineImplementation"("androidx.work:work-runtime-ktx:2.10.1")
 }

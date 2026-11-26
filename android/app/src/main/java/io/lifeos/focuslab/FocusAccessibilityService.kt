@@ -92,6 +92,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun unlocked(): Boolean = !getSystemService(KeyguardManager::class.java).isKeyguardLocked &&
         getSystemService(PowerManager::class.java).isInteractive
     fun reconcile() {
+        IntegrationHooks.tick(this)
         val phase = store.phase()
         if (store.isWhitelistSession && phase == Phase.ACTIVE && !usageGranted(this)) { store.stop("WHITELIST_PERMISSION_LOST"); return }
         if (phase != lastPhase) {
@@ -147,6 +148,7 @@ class FocusAccessibilityService : AccessibilityService() {
             else -> store.stop("MODE_INVALID")
         }
     }
+    fun recheckForeground() { try { enforce(null) } catch (_: Exception) { store.stop("FOREGROUND_RECHECK_FAULT") } }
     private fun showOverlay() {
         if (overlay != null) return
         val whitelistMode = store.isWhitelistSession

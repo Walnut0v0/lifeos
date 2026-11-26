@@ -46,3 +46,6 @@ debug-only DebugReceiver只接受持平台DUMP权限的调用者，固定使用�
 
 ## 2026-11-26 — 核心路线重排
 用户澄清自动分类已实现（当前远端提交尚未看到对应新增模块，开发端需核对本地最新进度），允许正常小版本修复。最高价值是 ChatGPT 自动规划、在线同步、锁屏到点逻辑进入/解锁绝对时间重算、全天使用监测并反馈复盘。新增 NEXT_ONLINE_PLAN.md，调整任务顺序，先私有交换数据源与本地调度闭环，同时推进统计，支持跳转 ChatGPT 变更计划。未改 Android 代码、未创建交换表、未修改真实规划或自动化，认证与网络等仍待验证。
+
+## 2026-11-26 — 最新在线任务与项目迁移
+合入phase01-poc远端新增c085643/b418f7d任务说明，保留分类分支成果；按用户指令迁移全部工程、Git、SDK/Gradle/缓存、历史记录与outputs到D:/document/10.others/lifeos。新增phase04-online-plan开发online/lab变体、绝对计划调度、受认证HTTPS私有交换服务、可选全天统计、ChatGPT变更入口。用户明确先完成开发和安装包，不执行手机测试；未配置Google OAuth/真实HTTPS或ChatGPT授权发布，未修改真实规划和复盘自动化。最终检查与交付见tests/ONLINE_VERIFICATION.md。

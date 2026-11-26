@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
     var refreshing by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(refreshing, active) {
+        if (!active) exitAt = 0
         try { apps = withContext(Dispatchers.IO) { AppCatalog(activity).apps() }; rules.refresh(apps); selected = store.whitelist; rulesRevision++ }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { message = "暂时无法读取应用列表，请刷新重试" }
@@ -60,6 +61,7 @@ import kotlinx.coroutines.withContext
             if (!active) TextButton(onClick = onLab) { Text("系统测试") }
             else Text("专注中", color = MaterialTheme.colorScheme.primary)
         }
+        IntegrationHooks.Status(activity, pulse)
         if (active) {
             Text("留一点时间，做好眼前的事。", style = MaterialTheme.typography.titleMedium)
             Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -132,7 +134,7 @@ import kotlinx.coroutines.withContext
                     finally { loading = false }
                 }
             }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) { Text(if (loading) "正在准备…" else "开始专注") }
-            Text("v0.3.0 · 分类与白名单预览版 · 离线执行", style = MaterialTheme.typography.labelSmall)
+            Text("${BuildConfig.VERSION_NAME} · ${BuildConfig.FLAVOR} · 本地计划到点执行", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
