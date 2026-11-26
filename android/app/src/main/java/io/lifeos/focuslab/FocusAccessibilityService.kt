@@ -23,6 +23,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private var foreground: String? = null
     private var foregroundAt = 0L
     private var overlay: View? = null
+    private var overlayTimer: TextView? = null
     private var overlayAt = 0L
     private var overlayWindowId = -1
     private var lastAction = 0L
@@ -58,7 +59,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 when {
                     pkg == null -> "UNKNOWN"
                     pkg == packageName -> "LAB"
-                    pkg in store.targets -> "TARGET"
+                    pkg in store.blockedApps -> "TARGET"
                     AppCatalog(this).isHome(pkg) -> "HOME"
                     AppCatalog(this).protected(pkg) -> "PROTECTED"
                     else -> "OTHER"
@@ -70,7 +71,7 @@ class FocusAccessibilityService : AccessibilityService() {
         // Full home events and all other protected/system windows still release immediately.
         val auxiliaryLauncherEvent = try {
             if (overlay != null && pkg != null && !event.isFullScreen && store.phase() == Phase.ACTIVE && AppCatalog(this).isHome(pkg)) {
-                val decision = ForegroundProbe.decision(this, store.targets)
+                val decision = ForegroundProbe.decision(this, store.blockedApps)
                 store.log(decision)
                 decision == "ASSIST_TARGET_CONFIRMED"
             } else false
@@ -89,6 +90,7 @@ class FocusAccessibilityService : AccessibilityService() {
         getSystemService(PowerManager::class.java).isInteractive
     fun reconcile() {
         val phase = store.phase()
+        if (store.isWhitelistSession && phase == Phase.ACTIVE && !usageGranted(this)) { store.stop("WHITELIST_PERMISSION_LOST"); return }
         if (phase != lastPhase) {
             store.log(if (phase == Phase.ACTIVE) "STATE_ACTIVE" else "STATE_INACTIVE")
             // Use only a recent known foreground package at the start boundary; otherwise await an event.
@@ -98,15 +100,16 @@ class FocusAccessibilityService : AccessibilityService() {
         if (phase != Phase.ACTIVE) clearOverlay("计时已结束或测试已停止")
         else if (!unlocked()) clearOverlay("手机已锁屏或屏幕已关闭，已让出画面")
         else if (overlay?.isAttachedToWindow == false) clearOverlay("系统已移除覆盖层窗口，计时仍在继续")
-        if (overlay != null && SystemClock.elapsedRealtime() - overlayAt > 10_000) store.stop("OVERLAY_SAFETY_TIMEOUT")
+        overlayTimer?.text = countdownText(store.remainingMillis())
+        if (!store.isWhitelistSession && overlay != null && SystemClock.elapsedRealtime() - overlayAt > 10_000) store.stop("OVERLAY_SAFETY_TIMEOUT")
     }
     private fun enforce(eventAt: Long?) {
-        if (store.mode == "DETECT") { clearOverlay("当前模式只检测，不显示拦截画面"); return }
+        if (!store.isWhitelistSession && store.mode == "DETECT") { clearOverlay("当前模式只检测，不显示拦截画面"); return }
         val pkg = foreground
         if (pkg == null) { clearOverlay("收到无法识别所属应用的窗口事件，已让出画面"); return }
         if (!unlocked()) { clearOverlay("手机已锁屏或屏幕已关闭，已让出画面"); return }
         if (store.phase() != Phase.ACTIVE) { clearOverlay("计时已结束或测试已停止"); return }
-        if (pkg !in store.targets) {
+        if (pkg !in store.blockedApps) {
             val reason = when {
                 pkg == packageName -> "已返回 LifeOS 页面，覆盖层已撤下"
                 AppCatalog(this).protected(pkg) -> "收到系统或受保护应用窗口事件，已让出画面；计时仍继续"
@@ -115,12 +118,18 @@ class FocusAccessibilityService : AccessibilityService() {
             clearOverlay(reason); return
         }
         if (!FocusPolicy.shouldBlock(true, true, AppCatalog(this).protected(pkg), unlocked())) { clearOverlay("当前窗口属于受保护应用，已让出画面"); return }
+        if (store.isWhitelistSession && !WhitelistPolicy.blocks(true, pkg in store.managedApps, pkg in store.whitelist, false, unlocked())) { clearOverlay("此应用可正常使用"); return }
         val now = SystemClock.elapsedRealtime()
-        if (overlay != null || now - lastAction < 800) return
+        if (overlay != null) return
+        if (now - lastAction < 800) {
+            val expected = pkg
+            handler.postDelayed({ if (foreground == expected && store.phase() == Phase.ACTIVE) try { enforce(null) } catch (_: Exception) { store.stop("RETRY_FAULT") } }, 800 - (now - lastAction))
+            return
+        }
         while (recentActions.isNotEmpty() && now - recentActions.first() > 10_000) recentActions.removeFirst()
         if (recentActions.size >= 8) { store.stop("LOOP_GUARD_STOP"); return }
         recentActions.addLast(now); lastAction = now
-        when (store.mode) {
+        when (if (store.isWhitelistSession) "OVERLAY" else store.mode) {
             "HOME" -> {
                 val success = performGlobalAction(GLOBAL_ACTION_HOME)
                 store.log(if (success) "HOME_REQUEST_ACCEPTED" else "HOME_REQUEST_FAILED", eventAt?.let { SystemClock.uptimeMillis() - it })
@@ -133,12 +142,34 @@ class FocusAccessibilityService : AccessibilityService() {
     }
     private fun showOverlay() {
         if (overlay != null) return
+        val whitelistMode = store.isWhitelistSession
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             setPadding(32, 64, 32, 64); setBackgroundColor(Color.rgb(241, 245, 249))
-            addView(TextView(context).apply { text = "专注拦截测试\n\n覆盖层最多显示 10 秒，随后自动停止本次测试。"; textSize = 22f; setTextColor(Color.BLACK) })
-            addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay("已点击返回桌面，计时仍继续") } })
-            addView(Button(context).apply { text = "停止所有测试并解除"; setOnClickListener { store.stop() } })
+            if (whitelistMode) {
+                addView(TextView(context).apply { text = "正在专注"; textSize = 22f; setTextColor(Color.BLACK) })
+                overlayTimer = TextView(context).apply { text = countdownText(store.remainingMillis()); textSize = 64f; gravity = Gravity.CENTER; setTextColor(Color.rgb(36, 88, 68)) }
+                addView(overlayTimer)
+                addView(TextView(context).apply { text = "从白名单中打开需要的应用"; textSize = 16f; setTextColor(Color.DKGRAY) })
+                val apps = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+                store.whitelist.sorted().forEach { allowed ->
+                    try {
+                        val label = packageManager.getApplicationLabel(packageManager.getApplicationInfo(allowed, 0))
+                        apps.addView(Button(context).apply { text = label; setOnClickListener { if (!FocusActions.openAllowed(this@FocusAccessibilityService, allowed)) Toast.makeText(context, "暂时无法打开，请返回计时页重试", Toast.LENGTH_SHORT).show() } })
+                    } catch (_: Exception) { }
+                }
+                if (store.whitelist.isEmpty()) apps.addView(TextView(context).apply { text = "本次未添加白名单应用"; setTextColor(Color.DKGRAY) })
+                addView(ScrollView(context).apply { addView(apps) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+                addView(Button(context).apply { text = "返回计时主页"; setOnClickListener {
+                    try { startActivity(android.content.Intent(this@FocusAccessibilityService, MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); clearOverlay("已返回计时主页") }
+                    catch (_: Exception) { Toast.makeText(context, "请从通知或桌面打开 LifeOS", Toast.LENGTH_SHORT).show() }
+                } })
+                addView(Button(context).apply { text = "结束专注 / 应急解除"; setOnClickListener { store.stop("WHITELIST_USER_STOP") } })
+            } else {
+                addView(TextView(context).apply { text = "专注拦截测试\n\n覆盖层最多显示 10 秒，随后自动停止本次测试。"; textSize = 22f; setTextColor(Color.BLACK) })
+                addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay("已点击返回桌面，计时仍继续") } })
+                addView(Button(context).apply { text = "停止所有测试并解除"; setOnClickListener { store.stop() } })
+            }
         }
         val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
@@ -155,6 +186,7 @@ class FocusAccessibilityService : AccessibilityService() {
         if (overlay == null) return
         overlay?.let { try { getSystemService(WindowManager::class.java).removeViewImmediate(it) } catch (_: Exception) { } }
         overlay = null
+        overlayTimer = null
         overlayWindowId = -1
         if (::store.isInitialized) {
             store.overlayStatus = reason

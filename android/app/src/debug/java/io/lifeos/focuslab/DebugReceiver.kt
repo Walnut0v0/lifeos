@@ -10,6 +10,20 @@ class DebugReceiver : BroadcastReceiver() {
         val store = LabStore(context)
         try {
             when (intent.getStringExtra("operation")) {
+                "start_whitelist" -> {
+                    val seconds = intent.getIntExtra("seconds", 30)
+                    require(seconds in 1..60)
+                    store.startWhitelist(seconds * 1000L)
+                    resultData = "STARTED_WHITELIST_TEST"
+                }
+                "allow_selected_test_app" -> {
+                    require(!store.isWhitelistSession || store.phase() != Phase.ACTIVE)
+                    require(store.targets.size == 1)
+                    val selected = store.targets.first()
+                    store.whitelist = if (intent.getBooleanExtra("allowed", false)) store.whitelist + selected else store.whitelist - selected
+                    resultData = "TEST_APP_WHITELIST_UPDATED"
+                }
+                "launch_first_allowed" -> resultData = if (store.whitelist.firstOrNull()?.let { FocusActions.openAllowed(context, it) } == true) "ALLOWED_APP_LAUNCH_REQUESTED" else "ALLOWED_APP_LAUNCH_FAILED"
                 "start" -> {
                     val seconds = intent.getIntExtra("seconds", 30)
                     require(seconds in 1..60)
