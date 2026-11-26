@@ -36,3 +36,7 @@ real-test-data/
 *.hprof
 __pycache__/
 .kotlin/
+
+# Local project workspace and deliverables
+/work/
+/outputs/
