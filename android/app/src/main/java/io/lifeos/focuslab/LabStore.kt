@@ -16,7 +16,7 @@ class LabStore(val context: Context) {
             AppRules(context).replaceEffectiveSet(value)
         }
     val managedApps: Set<String> get() = prefs.getStringSet("managed_apps", emptySet())!!.toSet()
-    val blockedApps: Set<String> get() = if (isWhitelistSession) managedApps - whitelist else targets
+    val blockedApps: Set<String> get() = (if (isWhitelistSession) managedApps - whitelist else targets).filterNot { IntegrationHooks.allows(context, it) }.toSet()
     fun remainingMillis(): Long = session()?.let { if (it.manual) it.elapsedEnd - SystemClock.elapsedRealtime() else it.end - System.currentTimeMillis() }?.coerceAtLeast(0) ?: 0
     fun startWhitelist(duration: Long, managedSnapshot: Set<String>? = null, appSnapshot: List<LabApp>? = null) {
         require(duration in 1000..FocusPolicy.MAX_DURATION)
@@ -31,6 +31,15 @@ class LabStore(val context: Context) {
         check(prefs.edit().putStringSet("managed_apps", managed).commit())
         ForegroundProbe.enableForFocus(remainingMillis())
         log("WHITELIST_STARTED")
+    }
+    fun applyPlannedTask(task: PlannedTask, managed: Set<String>) {
+        require(task.mode == "focus" && task.end > System.currentTimeMillis())
+        require(task.end - task.start in 1..ScheduleEngine.MAX_TASK)
+        stop("PLAN_REVISED")
+        val json = JSONObject().put("start", task.start).put("end", task.end).put("manual", false)
+            .put("elapsedEnd", 0).put("boot", boot()).put("duration", task.end - task.start).put("planned", true)
+        check(prefs.edit().putString("session", json.toString()).putString("policy", "WHITELIST").putStringSet("managed_apps", managed).commit())
+        reschedule(); notice(); log("PLAN_TASK_ACTIVE")
     }
     var usageAssistOptIn: Boolean
         get() = prefs.getBoolean("usage_assist_opt_in", false)
@@ -49,7 +58,7 @@ class LabStore(val context: Context) {
         prefs.getString("session", null)?.let { raw ->
             require(prefs.getString("policy", "LAB") in setOf("LAB", "WHITELIST"))
             val j = JSONObject(raw)
-            Session(j.getLong("start"), j.getLong("end"), j.getBoolean("manual"), j.getLong("elapsedEnd"), j.getInt("boot"), j.getLong("duration"))
+            Session(j.getLong("start"), j.getLong("end"), j.getBoolean("manual"), j.getLong("elapsedEnd"), j.getInt("boot"), j.getLong("duration"), j.optBoolean("planned", false))
         }
     } catch (_: Exception) { stop("CONFIG_INVALID"); null }
     fun phase(): Phase {
@@ -73,13 +82,15 @@ class LabStore(val context: Context) {
         notice()
     }
     fun stop(code: String = "USER_STOP") {
+        val wasPlanned = try { JSONObject(prefs.getString("session", "{}") ?: "{}").optBoolean("planned", false) } catch (_: Exception) { false }
+        IntegrationHooks.stopping(context, code, wasPlanned)
         ForegroundProbe.enabledUntilElapsed = 0L
         prefs.edit().remove("session").remove("policy").commit()
         val alarms = context.getSystemService(AlarmManager::class.java)
         alarms.cancel(pending(1)); alarms.cancel(pending(2))
         context.getSystemService(NotificationManager::class.java).cancel(1)
-        FocusAccessibilityService.live?.clearOverlay()
-        MainActivity.experimentsRef.get()?.stop()
+        val clearUi = Runnable { FocusAccessibilityService.live?.clearOverlay(); MainActivity.experimentsRef.get()?.stop() }
+        if (Looper.myLooper() == Looper.getMainLooper()) clearUi.run() else Handler(Looper.getMainLooper()).post(clearUi)
         context.stopService(Intent(context, ShortTestService::class.java))
         log(code)
     }
@@ -112,7 +123,7 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.3.0-alpha")
+    fun report(): String = JSONObject().put("version", BuildConfig.VERSION_NAME)
         .put("manual_category_count", AppRules(context).userCategories.size)
         .put("app_exception_count", AppRules(context).appOverrides.size)
         .put("allowed_category_count", AppRules(context).allowedCategories.size)

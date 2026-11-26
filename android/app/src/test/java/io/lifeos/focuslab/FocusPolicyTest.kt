@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FocusPolicyTest {
+    @Test fun publishedAbsoluteTaskSurvivesRebootAndEndsAtOriginalDeadline() {
+        val start = 1_800_000_000_000L
+        val session = Session(start, start + 90 * 60_000, planned = true)
+        assertEquals(Phase.ACTIVE, FocusPolicy.phase(session, start + 50 * 60_000, 1, 999))
+        assertEquals(Phase.IDLE, FocusPolicy.phase(session, session.end, 1, 999))
+        assertEquals(Phase.SCHEDULED, FocusPolicy.phase(session, start - 1, 1, 999))
+        assertEquals(Phase.FAULT, FocusPolicy.phase(session.copy(end = start + ScheduleEngine.MAX_TASK + 1, duration = ScheduleEngine.MAX_TASK + 1), start + 1, 1, 999))
+    }
     @Test fun scheduledBoundariesAndCrossMidnight() {
         val start = 1_800_028_740_000L
         val s = Session(start, start + 60_000)

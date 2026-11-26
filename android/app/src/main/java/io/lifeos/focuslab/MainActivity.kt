@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::store.isInitialized) try { store.reschedule() } catch (_: Exception) { store.stop("RESUME_FAULT") }
+        IntegrationHooks.resume(this)
     }
     private fun open(action: String, ownPackage: Boolean = false) {
         try { startActivity(Intent(action).apply { if (ownPackage) data = Uri.parse("package:$packageName") }) }

@@ -2,9 +2,9 @@
 
 个人 Android 专注管理应用，与 LifeOS 日程规划联动，根据任务自动开始/结束专注，按模式限制应用，并提供可审查的执行记录。
 
-当前预览版 **v0.3.0-alpha**：专注计时主页、白名单快捷启动、本地自动分类、手动改分类、类别允许与单应用例外。用户已明确授权继续这些功能，保留 Phase01 尚未完成的真机验收记录，不自动合并 main。
+当前开发版 **v0.4.0-alpha**：保留计时主页、分类及白名单；新增独立online变体、受认证HTTPS同步、完整计划缓存与绝对时间调度、可选全天统计及ChatGPT计划调整入口。lab变体保持无INTERNET。
 
-使用见[分类和专注操作说明](docs/CATEGORIES_AND_FOCUS.md)，验证见[本轮验证记录](tests/CATEGORIES_VERIFICATION.md)。专注页不提供系统设置快捷入口；普通退出等待10秒后确认，应急解除保留。当前仍为离线预览版，在线 ChatGPT 计划同步、多模式和长期稳定性验收尚未完成。
+项目已迁到 `D:/document/10.others/lifeos`，包括Git历史、工具链、缓存和交付物。[项目布局](docs/PROJECT_LAYOUT.md)、[在线版操作及接入](docs/ONLINE_SETUP.md)、[本轮验证](tests/ONLINE_VERIFICATION.md)。本轮按用户选择先交付安装包，未进行手机或真实ChatGPT同步验收；main不自动合并。
 
 ## 文档导航
 - [完整需求](docs/REQUIREMENTS.md)

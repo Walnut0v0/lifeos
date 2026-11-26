@@ -1,10 +1,13 @@
-# 当前任务 — 分类与白名单预览版
+# 当前任务 — 在线计划初版与项目迁移
 
-用户于2026-11-26明确要求继续GitHub需求中的应用分类，并同步代码。此授权替代此前仅Phase01/02的范围限制；安全和隐私限制不变。
+按最新tasks/NEXT_ONLINE_PLAN.md执行，复用phase03分类和白名单，保留离线Lab。项目根目录已迁移到D:/document/10.others/lifeos。
 
-- 已实现：计时主页、白名单入口、本地12类自动分类与来源解释、人工修正持久化、类别允许、单应用例外、刷新/搜索、新应用默认关闭等待确认。
-- 已实现：专注页移除设置快捷入口、普通结束等待10秒确认、通知返回计时，应急立即解除保留。
-- 本轮验证：[CATEGORIES_VERIFICATION.md](../tests/CATEGORIES_VERIFICATION.md)。操作：[CATEGORIES_AND_FOCUS.md](../docs/CATEGORIES_AND_FOCUS.md)。
-- 发布分支：phase01-poc保留实验修复；phase02-whitelist保留白名单检查点；phase03-app-categories包含本轮功能。main不自动合并。
-- 待续：多模式、单应用临时通行、完整本地多段计划、R15在线同步。后台/长锁屏/重启/分屏/小窗及20次成功率未全部验收；旧报告保留，不将短测视为正式通过。
-- 用户确认此前自动短测期间曾自己操作手机，相关观察受干扰，不能作为无干扰稳定性证据。
+- 已实现：ScheduleSnapshot v1验证、完整原子替换、revision防倒退/冲突、跨日绝对时间/下一边界、缓存执行、到期和未知模式放行、应急解除不重启本段。
+- 已实现：online/lab独立权限变体、认证HTTPS SyncAdapter、WorkManager周期与前台/网络/解锁补同步、Android Keystore凭证、错误与缓存状态。
+- 已实现：可选全天UsageStats元数据、重排去重/跨日切分/未知覆盖、应用与类别/小时汇总、可选详细区间分批上传、保留期/预览/本机及私有服务删除。
+- 已实现：ChatGPT复制申请/打开入口、单应用最多5分钟临时通行、返回同步与等待新版本状态；不读取或发送聊天。
+- 已实现：私有交换参考服务、phone/planner权限隔离、OpenAPI描述、Windows启停及ADB配置工具。
+- 本轮边界：用户选择先开发和安装包，未连接手机；Google手机OAuth/选表、稳定HTTPS部署、ChatGPT账号端写入链路尚未配置。服务只做环回自检，已停止，无公网部署；未动真实规划或23:30自动化。
+- 下一轮：完成实际私有HTTPS/授权写入者接入，再执行A1/A2两段计划、修订取消、锁屏/断网/重启；B1/B2/C1真机验收。统计实际管控时长、历史策略重放、跨设备/多模式及长期稳定性仍待完善。
+
+详见docs/ONLINE_SETUP.md、tests/ONLINE_VERIFICATION.md。分支phase04-online-plan，main不自动合并。旧Phase01能力与安全回归仍有效，不伪称全部已通过。

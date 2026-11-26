@@ -82,7 +82,7 @@ class DebugReceiver : BroadcastReceiver() {
                 }
                 "stop" -> { store.stop(); resultData = "STOPPED" }
                 "snapshot" -> resultData = store.report()
-                else -> resultData = "UNSUPPORTED_OPERATION"
+                else -> resultData = IntegrationHooks.debug(context, intent) ?: "UNSUPPORTED_OPERATION"
             }
         } catch (_: Exception) { store.stop("DEBUG_COMMAND_FAILED"); resultData = "TEST_NOT_STARTED_CHECK_CONNECTION_TARGETS_AND_PERMISSIONS" }
     }

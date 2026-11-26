@@ -41,3 +41,6 @@ android/（app、Gradle wrapper、构建配置）；docs/；tests/；tasks/ACTIV
 AppClassifier为纯Kotlin：用户修正 > 内置公开常见包名 > Android分类 > 名称/包名关键词 > 待分类，带来源和置信度。AppRules在私有SharedPreferences保存人工分类、类别允许、三态应用例外和最近分类；旧白名单迁移为单独允许，人工修正不被刷新覆盖。新发现应用先单独关闭。运行策略仍以安全保护优先，单应用例外高于类别。会话开始固定有效白名单和非关键第三方集合，专注中禁止编辑。
 
 FocusHome及无障碍计时覆盖层均提供白名单启动、普通退出10秒确认、明确应急解除。通知仅提供返回计时，旧Lab通知仍保留立即停止。没有自动系统锁屏、隐藏安全入口、阻止撤权或卸载。
+
+## v0.4.0在线计划初版
+ScheduleEngine/Codec为纯绝对时间规则与完整快照校验；PlanStore AtomicFile持久化，SyncAdapter隔离HTTPS源。PlanRuntime在主线程重新判定当前任务，AlarmManager下一边界；手动会话仍单调时钟，计划会话显式planned且最长24小时，不因重启延长。锁屏不拉起Activity。WorkManager负责非精确同步与统计，缓存执行不等待网络。UsageTimeline纯逻辑重排去重/切分/未知状态，UsageCollector仅UsageStats必要事件与私有文件。IntegrationHooks由flavor提供，lab不引用网络或WorkManager。桥接服务仅单用户参考实现，稳定HTTPS与ChatGPT授权发布端尚待配置。

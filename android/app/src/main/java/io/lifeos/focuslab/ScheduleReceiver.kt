@@ -7,6 +7,7 @@ class ScheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val store = LabStore(context)
         try {
+            IntegrationHooks.system(context, intent.action)
             if (intent.action == "STOP") { store.stop(); return }
             val s = store.session()
             if (intent.action == Intent.ACTION_BOOT_COMPLETED && s?.manual == true) { store.stop("MANUAL_BOOT_STOP"); return }

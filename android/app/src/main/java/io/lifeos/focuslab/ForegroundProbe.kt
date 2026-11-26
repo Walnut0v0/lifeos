@@ -8,7 +8,7 @@ import android.os.SystemClock
 object ForegroundProbe {
     var enabledUntilElapsed = 0L
     fun enableForTest(seconds: Long) { enabledUntilElapsed = SystemClock.elapsedRealtime() + seconds.coerceIn(1, 60) * 1000 }
-    fun enableForFocus(durationMillis: Long) { enabledUntilElapsed = SystemClock.elapsedRealtime() + durationMillis.coerceIn(0, FocusPolicy.MAX_DURATION) }
+    fun enableForFocus(durationMillis: Long) { enabledUntilElapsed = SystemClock.elapsedRealtime() + durationMillis.coerceIn(0, ScheduleEngine.MAX_TASK) }
     fun decision(context: Context, targets: Set<String>): String {
         if (enabledUntilElapsed == 0L) return "ASSIST_NOT_ENABLED"
         if (SystemClock.elapsedRealtime() >= enabledUntilElapsed) return "ASSIST_EXPIRED"
