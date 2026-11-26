@@ -33,3 +33,6 @@ android/（app、Gradle wrapper、构建配置）；docs/；tests/；tasks/ACTIV
 
 ## Phase 01 能力探索
 以 tests/PHASE01_CAPABILITY_MATRIX.md 为完整验证矩阵。权限诊断区分公开 API 检测与厂商手动确认；UsageStats 可选补充前台事件与使用时长，前台服务、悬浮窗、屏幕固定独立验证，依据结果选择最少必要权限。荣耀卡片锁定和后台管理通过手动系统配置验证。高级受管设备机制仅调查，另行授权专用设备实验；普通应用不承诺禁止用户强停、撤权或卸载。
+
+## 在线同步方向（待后续实现）
+用户在ChatGPT调整日程 → 授权工具/自定义GPT Action → 私有版本化计划数据源 → 手机自动同步并校验 → 本地执行。现有私有Sheets可作为候选数据源，部署和连接方式后续验证。当前普通聊天能否写入该目的地必须实测，不能假设任意会话自动可读。同步服务采用认证、最小数据范围、可撤销授权和最近同步状态；手机号、消息内容和屏幕信息不参与此流程。当前API与Action文档依据：[开发quickstart](https://developers.openai.com/api/docs/quickstart)、[GPT Actions](https://developers.openai.com/api/docs/actions/introduction)。当前仅记录技术方向，未部署服务或创建凭证。
