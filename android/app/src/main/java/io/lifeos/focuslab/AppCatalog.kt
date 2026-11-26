@@ -11,6 +11,10 @@ data class LabApp(val name: String, val packageName: String, val category: Int, 
 class AppCatalog(private val context: Context) {
     private val pm = context.packageManager
     @Suppress("DEPRECATION")
+    fun isHome(packageName: String): Boolean = pm.queryIntentActivities(
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0
+    ).any { it.activityInfo.packageName == packageName }
+    @Suppress("DEPRECATION")
     fun apps(): List<LabApp> = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
         .distinctBy { it.activityInfo.packageName }.map {
             val info = it.activityInfo.applicationInfo

@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only trusted callers holding the platform DUMP permission (such as authorized ADB shell).
+         This receiver is absent from release builds; it never grants or changes system permissions. -->
+    <application>
+        <receiver android:name=".DebugReceiver" android:exported="true" android:permission="android.permission.DUMP" />
+    </application>
+</manifest>

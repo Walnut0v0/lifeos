@@ -55,8 +55,8 @@ class CapabilityExperiments(private val activity: Activity) {
     }
 }
 
-fun usageGranted(activity: Activity): Boolean = activity.getSystemService(AppOpsManager::class.java)
-    .checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), activity.packageName) == AppOpsManager.MODE_ALLOWED
+fun usageGranted(context: android.content.Context): Boolean = context.getSystemService(AppOpsManager::class.java)
+    .checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.packageName) == AppOpsManager.MODE_ALLOWED
 
 private fun usageSample(activity: Activity): String {
     check(usageGranted(activity)) { "尚未授权使用情况访问" }

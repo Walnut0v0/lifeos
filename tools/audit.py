@@ -28,6 +28,11 @@ config = ET.parse(ROOT / 'android/app/src/main/res/xml/accessibility_service.xml
 for name in ('canRetrieveWindowContent', 'canPerformGestures', 'canTakeScreenshot'):
     assert config.attrib[ns + name] == 'false'
 assert config.attrib[ns + 'accessibilityEventTypes'] == 'typeWindowStateChanged'
+debug = ET.parse(ROOT / 'android/app/src/debug/AndroidManifest.xml').getroot()
+receiver = debug.find('application/receiver')
+assert receiver.attrib[ns + 'permission'] == 'android.permission.DUMP'
+assert receiver.attrib[ns + 'name'] == '.DebugReceiver'
+assert not any(x.attrib.get(ns + 'name') == '.DebugReceiver' for x in ET.parse(ROOT / 'android/app/src/main/AndroidManifest.xml').getroot().findall('application/receiver'))
 for source in (ROOT / 'android/app/src/main/java').rglob('*.kt'):
     text = source.read_text(encoding='utf-8')
     assert not re.search(r'\b(getRootInActiveWindow|rootInActiveWindow|takeScreenshot|dispatchGesture)\b|event\??\.(text|source)\b', text), source

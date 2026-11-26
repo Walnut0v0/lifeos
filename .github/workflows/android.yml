@@ -29,11 +29,11 @@ jobs:
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
           python3 tools/audit.py android/app/build/outputs/apk/debug/app-debug.apk "$AAPT"
           mkdir -p deliverables
-          cp android/app/build/outputs/apk/debug/app-debug.apk deliverables/lifeos-focus-lab-v0.1.1.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk deliverables/lifeos-focus-lab-v0.1.3.apk
           cd deliverables
-          sha256sum lifeos-focus-lab-v0.1.1.apk > SHA256SUMS.txt
+          sha256sum lifeos-focus-lab-v0.1.3.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lifeos-focus-lab-v0.1.1
+          name: lifeos-focus-lab-v0.1.3
           path: deliverables/
           retention-days: 7

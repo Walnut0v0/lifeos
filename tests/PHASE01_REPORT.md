@@ -2,6 +2,8 @@
 
 状态：收到用户初步真机反馈，A/B拦截存在失败，尚未完成量化验收。用户未提供原始诊断报告和逐场景样本，未反馈项保留NOT RUN。本地构建/审计单独见 BUILD_VERIFICATION.md，不代表实机通过。
 
+以下表格保留v0.1.1初步反馈。最新v0.1.3已通过USB读取并有部分真实短测证据、用户确认B持续到约10秒，详见[USB_DEVICE_VERIFICATION.md](USB_DEVICE_VERIFICATION.md)。整体仍未完成T01–T12量化验收。
+
 ## 环境
 APK 版本/commit/SHA256：
 厂商/系统版本/API Level（设备型号可选；禁止序列号）：

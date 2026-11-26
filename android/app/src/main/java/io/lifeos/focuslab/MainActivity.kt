@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
         var mode by remember { mutableStateOf(store.mode) }
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
             Text("LifeOS Focus Lab", style = MaterialTheme.typography.headlineSmall)
-            Text("v0.1.1-poc · 离线系统验证 · ${when (phase) { Phase.ACTIVE -> "正在计时"; Phase.SCHEDULED -> "等待开始"; Phase.FAULT -> "状态异常，已解除"; Phase.IDLE -> "未开始或已结束" }}")
+            Text("v0.1.3-poc · 离线系统验证 · ${when (phase) { Phase.ACTIVE -> "正在计时"; Phase.SCHEDULED -> "等待开始"; Phase.FAULT -> "状态异常，已解除"; Phase.IDLE -> "未开始或已结束" }}")
             Button(onClick = { store.stop(); message = "已停止所有测试" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("停止所有测试 / 立即解除") }
             Row { listOf("诊断", "应用", "计时", "能力", "报告").forEachIndexed { i, title -> TextButton(onClick = { tab = i }, contentPadding = PaddingValues(8.dp)) { Text(title) } } }
             Text(message)
@@ -94,12 +95,19 @@ class MainActivity : ComponentActivity() {
                         Text("覆盖层最近情况：${store.overlayStatus}")
                         var duration by remember { mutableStateOf("1") }
                         var wait by remember { mutableStateOf("2") }
+                        var usageAssist by remember { mutableStateOf(false) }
+                        Row {
+                            Checkbox(usageAssist, onCheckedChange = { usageAssist = it })
+                            Text("本次允许使用已授权的使用情况访问，辅助判断桌面过渡窗口（最多60秒，不保存轨迹）", Modifier.padding(top = 8.dp))
+                        }
                         OutlinedTextField(duration, { duration = it }, label = { Text("持续分钟：1–30") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(wait, { wait = it }, label = { Text("相对计划：几分钟后开始（1–1440）") }, modifier = Modifier.fillMaxWidth())
                         fun start(manual: Boolean, absolute: Long? = null) {
                             try {
                                 val d = duration.toLongOrNull() ?: error("时长必须为整数")
                                 require(d in 1..30) { "时长需为 1–30 分钟" }
+                                require(!usageAssist || usageGranted(this@MainActivity)) { "辅助判断需要先在能力页授权使用情况访问" }
+                                require(!usageAssist || manual) { "辅助判断仅用于本次手动短测，请使用立即开始" }
                                 if (mode != "DETECT") {
                                     require(FocusAccessibilityService.live != null) { "请先启用无障碍服务" }
                                     require(store.targets.isNotEmpty()) { "请先选择测试目标" }
@@ -110,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                 val at = if (manual) System.currentTimeMillis() else absolute ?: (System.currentTimeMillis() + w * 60_000)
                                 require(at >= System.currentTimeMillis() - 1000 && at < System.currentTimeMillis() + 86_400_000) { "开始时间需在未来 24 小时内" }
                                 store.start(at, d * 60_000, manual)
+                                if (usageAssist && manual) ForegroundProbe.enableForTest(60)
                                 message = if (store.exact()) "测试已设置" else "已使用非精确闹钟：系统可能延迟，不能据此验收精确调度"
                             } catch (e: IllegalArgumentException) { message = e.message ?: "参数无效" }
                             catch (_: Exception) { store.stop("START_FAULT"); message = "无法安全开始，已解除测试" }
@@ -168,6 +177,9 @@ class MainActivity : ComponentActivity() {
                 apps = result.first; safe = result.second
                 val valid = selected.intersect(safe)
                 if (valid != selected) { store.targets = valid; selected = valid }
+            } catch (cancelled: CancellationException) {
+                // Leaving the application-list tab cancels its scan; this is not a device failure.
+                throw cancelled
             } catch (_: Exception) { store.stop("SCAN_FAULT"); apps = emptyList(); safe = emptySet(); feedback("扫描失败，已停止测试") }
         }
         Text("T01：应用扫描与目标选择", style = MaterialTheme.typography.titleMedium)

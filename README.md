@@ -6,6 +6,8 @@
 
 当前测试补丁v0.1.1：针对B覆盖层1–2秒消失补充自身窗口识别及中文撤除原因；[本轮简单复测步骤](docs/OVERLAY_RETEST.md)。尚未确认MagicOS根因已修复。正式在线计划自动同步目标已记录为R15，当前包继续离线验证。
 
+最新v0.1.3已进行USB实机短测：增加默认关闭的短时前台辅助识别，用户从桌面打开目标后确认B保持至约10秒测试上限；[USB诊断方式](docs/USB_DIAGNOSTICS.md)、[实机短测记录](tests/USB_DEVICE_VERIFICATION.md)。完整Phase01验收仍未完成。
+
 ## 文档导航
 - [完整需求](docs/REQUIREMENTS.md)
 - [架构与技术方案](docs/ARCHITECTURE.md)

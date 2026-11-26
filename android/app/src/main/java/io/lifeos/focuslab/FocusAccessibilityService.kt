@@ -52,6 +52,30 @@ class FocusAccessibilityService : AccessibilityService() {
             store.log("OVERLAY_SELF_WINDOW_IGNORED")
             return
         }
+        // Only fixed roles/flags during a test; never persist package names, class names or UI text.
+        if (store.phase() == Phase.ACTIVE) {
+            val role = try {
+                when {
+                    pkg == null -> "UNKNOWN"
+                    pkg == packageName -> "LAB"
+                    pkg in store.targets -> "TARGET"
+                    AppCatalog(this).isHome(pkg) -> "HOME"
+                    AppCatalog(this).protected(pkg) -> "PROTECTED"
+                    else -> "OTHER"
+                }
+            } catch (_: Exception) { "UNRESOLVED" }
+            store.log("WINDOW_${role}_${if (event.isFullScreen) "FULL" else "PARTIAL"}_${if (overlay != null) "COVERED" else "OPEN"}", SystemClock.uptimeMillis() - event.eventTime)
+        }
+        // Only an explicitly enabled, at-most-60-second test may consult recent usage metadata.
+        // Full home events and all other protected/system windows still release immediately.
+        val auxiliaryLauncherEvent = try {
+            overlay != null && pkg != null && !event.isFullScreen && store.phase() == Phase.ACTIVE &&
+                AppCatalog(this).isHome(pkg) && ForegroundProbe.targetStillResumed(this, store.targets)
+        } catch (_: Exception) { false }
+        if (auxiliaryLauncherEvent) {
+            store.log("LAUNCHER_AUXILIARY_EVENT_TARGET_STILL_RESUMED")
+            return
+        }
         foreground = pkg
         foregroundAt = SystemClock.elapsedRealtime()
         if (pkg != null && pkg != packageName) { lastExternalPackage = pkg; eventCount++ }

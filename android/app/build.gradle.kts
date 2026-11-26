@@ -10,8 +10,8 @@ android {
         applicationId = "io.lifeos.focuslab"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.1-poc"
+        versionCode = 4
+        versionName = "0.1.3-poc"
     }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

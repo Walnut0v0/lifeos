@@ -45,6 +45,7 @@ class LabStore(val context: Context) {
         notice()
     }
     fun stop(code: String = "USER_STOP") {
+        ForegroundProbe.enabledUntilElapsed = 0L
         prefs.edit().remove("session").commit()
         val alarms = context.getSystemService(AlarmManager::class.java)
         alarms.cancel(pending(1)); alarms.cancel(pending(2))
@@ -82,7 +83,7 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.1.1-poc")
+    fun report(): String = JSONObject().put("version", "0.1.3-poc")
         .put("api", Build.VERSION.SDK_INT).put("manufacturer", Build.MANUFACTURER)
         .put("android_release", Build.VERSION.RELEASE).put("mode", mode)
         .put("target_aliases", JSONArray(targets.indices.map { "TEST_APP_${it + 1}" }))
@@ -92,6 +93,7 @@ class LabStore(val context: Context) {
         .put("battery_optimization_exempt", context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName))
         .put("foreground_service_running", ShortTestService.running)
         .put("overlay_status", overlayStatus)
+        .put("usage_assist_test_active", SystemClock.elapsedRealtime() < ForegroundProbe.enabledUntilElapsed)
         .put("capability_snapshot_at", System.currentTimeMillis())
         .put("phase", phase().name).put("events", JSONArray(prefs.getString("events", "[]") ?: "[]"))
         .put("manual_results", JSONObject(prefs.getString("results", "{}") ?: "{}"))
