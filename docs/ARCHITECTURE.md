@@ -36,3 +36,8 @@ android/（app、Gradle wrapper、构建配置）；docs/；tests/；tasks/ACTIV
 
 ## 在线同步方向（待后续实现）
 用户在ChatGPT调整日程 → 授权工具/自定义GPT Action → 私有版本化计划数据源 → 手机自动同步并校验 → 本地执行。现有私有Sheets可作为候选数据源，部署和连接方式后续验证。当前普通聊天能否写入该目的地必须实测，不能假设任意会话自动可读。同步服务采用认证、最小数据范围、可撤销授权和最近同步状态；手机号、消息内容和屏幕信息不参与此流程。当前API与Action文档依据：[开发quickstart](https://developers.openai.com/api/docs/quickstart)、[GPT Actions](https://developers.openai.com/api/docs/actions/introduction)。当前仅记录技术方向，未部署服务或创建凭证。
+
+## 分类与白名单实现
+AppClassifier为纯Kotlin：用户修正 > 内置公开常见包名 > Android分类 > 名称/包名关键词 > 待分类，带来源和置信度。AppRules在私有SharedPreferences保存人工分类、类别允许、三态应用例外和最近分类；旧白名单迁移为单独允许，人工修正不被刷新覆盖。新发现应用先单独关闭。运行策略仍以安全保护优先，单应用例外高于类别。会话开始固定有效白名单和非关键第三方集合，专注中禁止编辑。
+
+FocusHome及无障碍计时覆盖层均提供白名单启动、普通退出10秒确认、明确应急解除。通知仅提供返回计时，旧Lab通知仍保留立即停止。没有自动系统锁屏、隐藏安全入口、阻止撤权或卸载。

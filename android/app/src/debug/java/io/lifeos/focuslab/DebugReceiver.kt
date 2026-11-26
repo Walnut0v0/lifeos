@@ -10,6 +10,45 @@ class DebugReceiver : BroadcastReceiver() {
         val store = LabStore(context)
         try {
             when (intent.getStringExtra("operation")) {
+                "classification_self_test" -> {
+                    require(store.phase() != Phase.ACTIVE)
+                    val prefs = context.getSharedPreferences("lab", Context.MODE_PRIVATE)
+                    val keys = listOf("whitelist", "app_overrides", "user_categories", "allowed_categories", "known_categories")
+                    val backup = prefs.all.filterKeys { it in keys }
+                    try {
+                        val apps = AppCatalog(context).apps()
+                        val app = apps.first { it.packageName in store.targets }
+                        val rules = AppRules(context)
+                        rules.refresh(apps)
+                        rules.setUserCategory(app, AppCategory.RESEARCH)
+                        rules.refresh(apps)
+                        check(AppRules(context).classification(app).source == ClassificationSource.USER)
+                        check(AppRules(context).classification(app).category == AppCategory.RESEARCH)
+                        rules.setAppOverride(app.packageName, null)
+                        rules.setCategoryAllowed(AppCategory.RESEARCH, true)
+                        check(app.packageName in store.whitelist)
+                        rules.setAppOverride(app.packageName, false)
+                        check(app.packageName !in store.whitelist)
+                        rules.setCategoryAllowed(AppCategory.RESEARCH, false)
+                        rules.setAppOverride(app.packageName, true)
+                        check(app.packageName in store.whitelist)
+                        rules.setAppOverride(app.packageName, null)
+                        check(app.packageName !in store.whitelist)
+                        rules.setUserCategory(app, null)
+                        check(rules.classification(app).source != ClassificationSource.USER)
+                        resultData = "CLASSIFICATION_PERSISTENCE_AND_PRECEDENCE_PASSED"
+                    } finally {
+                        val editor = prefs.edit()
+                        keys.forEach { editor.remove(it) }
+                        backup.forEach { (key, value) ->
+                            when (value) {
+                                is String -> editor.putString(key, value)
+                                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+                            }
+                        }
+                        check(editor.commit())
+                    }
+                }
                 "start_whitelist" -> {
                     val seconds = intent.getIntExtra("seconds", 30)
                     require(seconds in 1..60)

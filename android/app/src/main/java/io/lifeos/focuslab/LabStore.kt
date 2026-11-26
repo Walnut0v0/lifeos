@@ -13,18 +13,20 @@ class LabStore(val context: Context) {
     var whitelist: Set<String>
         get() = prefs.getStringSet("whitelist", emptySet())!!.toSet()
         set(value) {
-            check(!isWhitelistSession || phase() != Phase.ACTIVE) { "请先结束专注，再修改白名单" }
-            prefs.edit().putStringSet("whitelist", value.toSet()).commit()
+            AppRules(context).replaceEffectiveSet(value)
         }
     val managedApps: Set<String> get() = prefs.getStringSet("managed_apps", emptySet())!!.toSet()
     val blockedApps: Set<String> get() = if (isWhitelistSession) managedApps - whitelist else targets
     fun remainingMillis(): Long = session()?.let { if (it.manual) it.elapsedEnd - SystemClock.elapsedRealtime() else it.end - System.currentTimeMillis() }?.coerceAtLeast(0) ?: 0
-    fun startWhitelist(duration: Long, managedSnapshot: Set<String>? = null) {
+    fun startWhitelist(duration: Long, managedSnapshot: Set<String>? = null, appSnapshot: List<LabApp>? = null) {
         require(duration in 1000..FocusPolicy.MAX_DURATION)
         require(FocusAccessibilityService.live != null) { "请先开启应用识别服务" }
         require(usageGranted(context)) { "请先允许前台应用识别" }
         val catalog = AppCatalog(context)
-        val managed = managedSnapshot ?: catalog.apps().filterNot { catalog.protected(it.packageName) }.map { it.packageName }.toSet()
+        val apps = appSnapshot ?: catalog.apps()
+        val managed = managedSnapshot ?: apps.filterNot { catalog.protected(it.packageName) }.map { it.packageName }.toSet()
+        if (session() != null) stop("WHITELIST_REPLACED")
+        AppRules(context).refresh(apps)
         start(System.currentTimeMillis(), duration, true, "WHITELIST")
         check(prefs.edit().putStringSet("managed_apps", managed).commit())
         ForegroundProbe.enableForFocus(remainingMillis())
@@ -110,7 +112,10 @@ class LabStore(val context: Context) {
         prefs.edit().putString("events", next.toString()).apply()
     }
     fun clearLogs() { prefs.edit().remove("events").commit() }
-    fun report(): String = JSONObject().put("version", "0.2.0-alpha")
+    fun report(): String = JSONObject().put("version", "0.3.0-alpha")
+        .put("manual_category_count", AppRules(context).userCategories.size)
+        .put("app_exception_count", AppRules(context).appOverrides.size)
+        .put("allowed_category_count", AppRules(context).allowedCategories.size)
         .put("whitelist_session", isWhitelistSession).put("whitelist_count", whitelist.size)
         .put("managed_count", managedApps.size).put("remaining_ms", remainingMillis())
         .put("api", Build.VERSION.SDK_INT).put("manufacturer", Build.MANUFACTURER)
@@ -140,7 +145,7 @@ class LabStore(val context: Context) {
         try { n.notify(1, Notification.Builder(context, "lab").setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(if (isWhitelistSession) "正在专注 · ${countdownText(remainingMillis())}" else "LifeOS 测试已配置")
             .setContentText(if (isWhitelistSession) "点此返回计时页，白名单应用可用" else "可随时打开应用或点击停止解除测试")
-            .setContentIntent(open).addAction(Notification.Action.Builder(null, "停止所有测试", stop).build()).build()) }
+            .setContentIntent(open).apply { if (!isWhitelistSession) addAction(Notification.Action.Builder(null, "停止所有测试", stop).build()) }.build()) }
         catch (_: SecurityException) { log("NOTIFICATION_UNAVAILABLE") }
     }
 }

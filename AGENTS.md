@@ -2,7 +2,7 @@
 
 先读 tasks/ACTIVE.md、docs/REQUIREMENTS.md、docs/ARCHITECTURE.md、docs/PRIVACY.md、docs/ROADMAP.md、tests/PHASE01_TEST_PLAN.md。隐私与安全规范优先，存在冲突时先采取最小权限和故障放行。
 
-- 用户于2026-11-26明确授权推进计时主页和白名单模式：在phase02-whitelist分支实现该范围，保留phase01-poc测试分支与已知不稳定记录。暂不开发云同步、完整分类、严格锁定，不自动合并main。
+- 用户于2026-11-26明确授权推进计时主页和白名单模式：在phase02-whitelist分支实现该范围，保留phase01-poc测试分支与已知不稳定记录。用户随后明确授权phase03-app-categories实现本地自动/人工分类、类别白名单与单应用例外，以及去掉专注页设置快捷入口、普通退出10秒等待；保留应急解除和系统最终控制权。暂不开发云同步、多模式、严格锁定，不自动合并main。
 - Kotlin/Compose 原生工程，最小依赖、可重现构建；英文代码命名，中文面向用户文档。
 - 不得读取私人内容，不引入 INTERNET 或遥测；验证最终合并 Manifest 和 APK 权限。
 - 仅用户选中的非必要应用作为测试目标，有限时长，停止入口可用；禁止阻止撤权/卸载/设置及必要系统功能。

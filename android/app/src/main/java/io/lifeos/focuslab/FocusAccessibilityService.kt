@@ -24,6 +24,9 @@ class FocusAccessibilityService : AccessibilityService() {
     private var foregroundAt = 0L
     private var overlay: View? = null
     private var overlayTimer: TextView? = null
+    private var exitButton: Button? = null
+    private var exitCancelButton: Button? = null
+    private var exitAt = 0L
     private var overlayAt = 0L
     private var overlayWindowId = -1
     private var lastAction = 0L
@@ -101,6 +104,10 @@ class FocusAccessibilityService : AccessibilityService() {
         else if (!unlocked()) clearOverlay("手机已锁屏或屏幕已关闭，已让出画面")
         else if (overlay?.isAttachedToWindow == false) clearOverlay("系统已移除覆盖层窗口，计时仍在继续")
         overlayTimer?.text = countdownText(store.remainingMillis())
+        if (exitAt > 0) {
+            val wait = (exitAt - SystemClock.elapsedRealtime()).coerceAtLeast(0)
+            exitButton?.text = if (wait > 0) "再等 ${(wait + 999) / 1000} 秒后可结束" else "确认结束专注"
+        }
         if (!store.isWhitelistSession && overlay != null && SystemClock.elapsedRealtime() - overlayAt > 10_000) store.stop("OVERLAY_SAFETY_TIMEOUT")
     }
     private fun enforce(eventAt: Long?) {
@@ -164,7 +171,14 @@ class FocusAccessibilityService : AccessibilityService() {
                     try { startActivity(android.content.Intent(this@FocusAccessibilityService, MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); clearOverlay("已返回计时主页") }
                     catch (_: Exception) { Toast.makeText(context, "请从通知或桌面打开 LifeOS", Toast.LENGTH_SHORT).show() }
                 } })
-                addView(Button(context).apply { text = "结束专注 / 应急解除"; setOnClickListener { store.stop("WHITELIST_USER_STOP") } })
+                exitButton = Button(context).apply { text = "申请结束专注"; setOnClickListener {
+                    if (exitAt == 0L) { exitAt = SystemClock.elapsedRealtime() + 10_000; exitCancelButton?.visibility = View.VISIBLE }
+                    else if (SystemClock.elapsedRealtime() >= exitAt) store.stop("WHITELIST_CONFIRMED_EXIT")
+                } }
+                addView(exitButton)
+                exitCancelButton = Button(context).apply { text = "继续专注"; visibility = View.GONE; setOnClickListener { exitAt = 0; exitButton?.text = "申请结束专注"; visibility = View.GONE } }
+                addView(exitCancelButton)
+                addView(Button(context).apply { text = "遇到误拦截？应急解除"; setOnClickListener { store.stop("WHITELIST_EMERGENCY_STOP") } })
             } else {
                 addView(TextView(context).apply { text = "专注拦截测试\n\n覆盖层最多显示 10 秒，随后自动停止本次测试。"; textSize = 22f; setTextColor(Color.BLACK) })
                 addView(Button(context).apply { text = "返回桌面"; setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME); clearOverlay("已点击返回桌面，计时仍继续") } })
@@ -187,6 +201,7 @@ class FocusAccessibilityService : AccessibilityService() {
         overlay?.let { try { getSystemService(WindowManager::class.java).removeViewImmediate(it) } catch (_: Exception) { } }
         overlay = null
         overlayTimer = null
+        exitButton = null; exitCancelButton = null; exitAt = 0
         overlayWindowId = -1
         if (::store.isInitialized) {
             store.overlayStatus = reason

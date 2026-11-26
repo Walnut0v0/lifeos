@@ -3,6 +3,7 @@ package io.lifeos.focuslab
 import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,18 +26,30 @@ import kotlinx.coroutines.withContext
     var apps by remember { mutableStateOf<List<LabApp>>(emptyList()) }
     var selected by remember { mutableStateOf(store.whitelist) }
     var editing by remember { mutableStateOf(false) }
-    var search by remember { mutableStateOf("") }
+    val rules = remember(activity) { AppRules(activity) }
+    var rulesRevision by remember { mutableIntStateOf(0) }
+    var exitAt by remember { mutableLongStateOf(0) }
     var minutes by remember { mutableStateOf("25") }
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(refreshing, active) {
-        try { apps = withContext(Dispatchers.IO) { AppCatalog(activity).apps() }; selected = store.whitelist }
+        try { apps = withContext(Dispatchers.IO) { AppCatalog(activity).apps() }; rules.refresh(apps); selected = store.whitelist; rulesRevision++ }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { message = "暂时无法读取应用列表，请刷新重试" }
     }
     val remaining = remember(pulse) { store.remainingMillis() }
+    val exitWait = remember(pulse, exitAt) { (exitAt - SystemClock.elapsedRealtime()).coerceAtLeast(0) }
+    if (active && exitAt > 0) AlertDialog(
+        onDismissRequest = { exitAt = 0 },
+        title = { Text("要结束这次专注吗？") },
+        text = { Text(if (exitWait > 0) "先等 ${(exitWait + 999) / 1000} 秒，再决定是否结束。计时仍在继续。" else "如果只是想刷一会儿，也可以回去继续这段专注。") },
+        confirmButton = { TextButton(enabled = exitWait == 0L, onClick = {
+            if (exitAt > 0 && SystemClock.elapsedRealtime() >= exitAt) { store.stop("WHITELIST_CONFIRMED_EXIT"); exitAt = 0 }
+        }) { Text("确认结束") } },
+        dismissButton = { TextButton(onClick = { exitAt = 0 }) { Text("继续专注") } }
+    )
     fun safety(action: String) {
         try { activity.startActivity(Intent(action)); FocusAccessibilityService.live?.clearOverlay("已打开必要系统功能") }
         catch (_: Exception) { message = "请从系统桌面打开此功能" }
@@ -58,7 +71,7 @@ import kotlinx.coroutines.withContext
             Text("用完后，可点通知返回这个计时页。", style = MaterialTheme.typography.bodySmall)
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val allowed = apps.filter { it.packageName in selected }
-                if (allowed.isEmpty()) Text("这次专注没有添加应用入口。电话和系统设置仍可使用。")
+                if (allowed.isEmpty()) Text("这次专注没有添加应用入口。必要通话仍可使用。")
                 allowed.chunked(2).forEach { pair ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         pair.forEach { app ->
@@ -76,26 +89,14 @@ import kotlinx.coroutines.withContext
             if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.error)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 TextButton(onClick = { safety(Intent.ACTION_DIAL) }) { Text("电话") }
-                TextButton(onClick = { safety(Settings.ACTION_SETTINGS) }) { Text("系统设置") }
             }
-            OutlinedButton(onClick = { store.stop("WHITELIST_USER_STOP"); message = "本次专注已结束" }, modifier = Modifier.fillMaxWidth()) { Text("结束专注 / 应急解除") }
+            OutlinedButton(onClick = { exitAt = SystemClock.elapsedRealtime() + 10_000 }, modifier = Modifier.fillMaxWidth()) { Text("申请结束专注") }
+            TextButton(onClick = { store.stop("WHITELIST_EMERGENCY_STOP"); exitAt = 0; message = "已应急结束" }, modifier = Modifier.fillMaxWidth()) { Text("遇到误拦截？应急解除") }
         } else if (editing) {
-            Text("专注时，你需要哪些应用？", style = MaterialTheme.typography.titleLarge)
-            Text("勾选后会出现在计时页。电话、设置等必要系统功能始终可用。", style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(search, { search = it }, label = { Text("搜索应用") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Text("应用分类与白名单", style = MaterialTheme.typography.titleLarge)
+            Text("单个应用的选择优先于整类开关。系统应用当前仍保护放行。", style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { refreshing++ }) { Text("刷新应用列表") }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                apps.filter { it.name.contains(search, true) || it.packageName.contains(search, true) }.forEach { app ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(app.packageName in selected, onCheckedChange = { checked ->
-                            selected = if (checked) selected + app.packageName else selected - app.packageName
-                            store.whitelist = selected
-                        })
-                        Image(remember(app.packageName) { app.icon.toBitmap(64, 64).asImageBitmap() }, null, Modifier.size(32.dp))
-                        Text(app.name, Modifier.weight(1f).padding(start = 12.dp))
-                    }
-                }
-            }
+            CategoryPicker(apps, rules, selected, rulesRevision) { selected = store.whitelist; rulesRevision++ }
             Button(onClick = { editing = false }, modifier = Modifier.fillMaxWidth()) { Text("完成，已选 ${selected.size} 个") }
         } else {
             Text("给下一段时间，\n留一个清楚的边界。", fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium)
@@ -104,7 +105,7 @@ import kotlinx.coroutines.withContext
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(5, 15, 25, 30).forEach { value -> FilterChip(selected = minutes == value.toString(), onClick = { minutes = value.toString() }, label = { Text("$value 分") }) }
             }
-            OutlinedButton(onClick = { editing = true }, modifier = Modifier.fillMaxWidth()) { Text("选择白名单应用 · 已选 ${selected.size} 个") }
+            OutlinedButton(onClick = { editing = true }, modifier = Modifier.fillMaxWidth()) { Text("应用分类与白名单 · 已选 ${selected.size} 个") }
             Text("应用识别：${if (FocusAccessibilityService.live != null) "已连接" else "需要开启"}  ·  前台识别：${if (usageGranted(activity)) "已允许" else "需要允许"}", style = MaterialTheme.typography.bodySmall)
             if (FocusAccessibilityService.live == null) TextButton(onClick = { safety(Settings.ACTION_ACCESSIBILITY_SETTINGS) }) { Text("开启应用识别服务") }
             if (!usageGranted(activity)) TextButton(onClick = { safety(Settings.ACTION_USAGE_ACCESS_SETTINGS) }) { Text("允许前台应用识别") }
@@ -118,11 +119,12 @@ import kotlinx.coroutines.withContext
                 else scope.launch {
                     loading = true
                     try {
-                        val managed = withContext(Dispatchers.IO) {
+                        val prepared = withContext(Dispatchers.IO) {
                             val catalog = AppCatalog(activity)
-                            catalog.apps().filterNot { catalog.protected(it.packageName) }.map { it.packageName }.toSet()
+                            val list = catalog.apps()
+                            list to list.filterNot { catalog.protected(it.packageName) }.map { it.packageName }.toSet()
                         }
-                        store.startWhitelist(value * 60_000, managed)
+                        store.startWhitelist(value * 60_000, prepared.second, prepared.first)
                         editing = false; message = ""
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (error: IllegalArgumentException) { message = error.message ?: "请先完成权限设置" }
@@ -130,7 +132,7 @@ import kotlinx.coroutines.withContext
                     finally { loading = false }
                 }
             }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) { Text(if (loading) "正在准备…" else "开始专注") }
-            Text("v0.2.0 · 白名单预览版 · 离线执行", style = MaterialTheme.typography.labelSmall)
+            Text("v0.3.0 · 分类与白名单预览版 · 离线执行", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
