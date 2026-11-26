@@ -45,3 +45,6 @@ debug-only DebugReceiver只接受持平台DUMP权限的调用者，固定使用�
 
 ## 2026-11-26 — 核心路线重排
 用户澄清自动分类已实现（当前远端提交尚未看到对应新增模块，开发端需核对本地最新进度），允许正常小版本修复。最高价值是 ChatGPT 自动规划、在线同步、锁屏到点逻辑进入/解锁绝对时间重算、全天使用监测并反馈复盘。新增 NEXT_ONLINE_PLAN.md，调整任务顺序，先私有交换数据源与本地调度闭环，同时推进统计，支持跳转 ChatGPT 变更计划。未改 Android 代码、未创建交换表、未修改真实规划或自动化，认证与网络等仍待验证。
+
+## 2026-11-26 — Focus Exchange 初始化
+已创建独立私有原生 Google Sheets，位于 Planning State 同一文件夹；8 个工作表、Protocol 19 条规则，Schedule revision=0 未发布、Focus Modes 空快照。已读回全部表头及初始值、确认 owner-only；真实 ID 不写公开仓库。正式协议见 docs/FOCUS_EXCHANGE_PROTOCOL.md。未配置手机 Google OAuth、未改 Android 代码、未发布真实日程、未改23:30自动化。下一步按正式协议联调。
