@@ -46,3 +46,6 @@ C1：App 能打开 ChatGPT，计划申请可复制；更新计划后返回触发
 https://developer.android.com/develop/background-work/services/alarms
 https://developer.android.com/reference/android/app/usage/UsageStatsManager
 https://developer.android.com/reference/android/app/usage/UsageEvents.Event
+
+## Focus Exchange v1.0 接口已建立
+以 [正式接口规范](../docs/FOCUS_EXCHANGE_PROTOCOL.md) 为准：私有工作簿已创建和验证，Schedule!A2 为唯一版本化日程源，手机拥有模式配置及使用记录。用户私下选择/配置真实表，不在仓库提交表 ID。优先完成 Android OAuth + 读取未发布快照 + 上传模式 + 两段测试日程的端到端联调，再做真实复盘；原拟议结构如有差异以正式协议为准。

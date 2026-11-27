@@ -63,8 +63,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
             runCatching { UsageCollector.collect(context) }.onFailure {
                 plans.prefs.edit().putString("usage_status", "统计暂不可用，覆盖中断；计划同步仍继续").apply()
             }
-            val credentials = SyncConfig(context).read() ?: return Result.success()
-            val client = ExchangeClient(credentials)
+            val saved = SyncConfig(context).read() ?: return Result.success()
+            val credentials = GoogleAuthorization.refreshed(context, saved)
+            val google = if (GoogleAuthorization.isGoogle(credentials)) GoogleSheetsAdapter(context, credentials) else null
+            val client: SyncAdapter = google ?: ExchangeClient(credentials)
             val raw = client.fetchPlan()
             if (isStopped) return Result.success()
             val changed = plans.accept(raw, credentials)
@@ -76,19 +78,30 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
                     plans.prefs.edit().putString("usage_upload_status", "统计上传失败，保留本机数据；计划已同步").apply()
                 }
             }
+            runCatching { google?.syncState() }
             return Result.success()
         } catch (error: Exception) {
             if (error.message == "SOURCE_CHANGED" || isStopped) return Result.success()
+            if (error.message == "UNPUBLISHED") {
+                plans.prefs.edit().putLong("last_sync", System.currentTimeMillis()).putString("sync_status", "已连通，计划尚未发布；当前放行").commit()
+                runCatching { SyncConfig(context).read()?.let { GoogleSheetsAdapter(context, it).syncState("UNPUBLISHED") } }
+                PlanRuntime.reconcile(context)
+                return Result.success()
+            }
             val status = when {
                 error.message == "AUTH_REQUIRED" -> "访问授权失效，保留未过期缓存"
                 error.message == "REVISION_CONFLICT" -> "版本倒退或同版本内容冲突，拒绝替换缓存"
                 error.message == "SNAPSHOT_EXPIRED" -> "收到的计划已过期，保留未过期缓存"
+                error.message == "GOOGLE_API_DISABLED" -> "Google项目中的必需API尚未启用"
+                error.message == "FILE_NOT_AUTHORIZED" -> "未获得这份Google表的访问权，请重新选择交换表"
+                error.message == "WORKBOOK_SCHEMA" -> "所选文件不符合Focus Exchange协议，未执行计划"
                 error is org.json.JSONException || error is java.time.DateTimeException || (error is IllegalArgumentException && error.message != "HTTP_FAILED") -> "计划格式或边界无效，拒绝替换缓存"
                 else -> "同步失败，保留未过期缓存；请检查网络或授权"
             }
             plans.prefs.edit().putString("sync_status", status).apply()
             PlanRuntime.reconcile(context)
-            return if (runAttemptCount < 3) Result.retry() else Result.failure()
+            return if (error.message in setOf("AUTH_REQUIRED", "FILE_NOT_AUTHORIZED", "GOOGLE_API_DISABLED", "WORKBOOK_SCHEMA", "DIFFERENT_DEVICE")) Result.failure()
+                else if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
     }
 }

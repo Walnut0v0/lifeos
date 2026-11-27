@@ -49,3 +49,13 @@ debug-only DebugReceiver只接受持平台DUMP权限的调用者，固定使用�
 
 ## 2026-11-26 — 最新在线任务与项目迁移
 合入phase01-poc远端新增c085643/b418f7d任务说明，保留分类分支成果；按用户指令迁移全部工程、Git、SDK/Gradle/缓存、历史记录与outputs到D:/document/10.others/lifeos。新增phase04-online-plan开发online/lab变体、绝对计划调度、受认证HTTPS私有交换服务、可选全天统计、ChatGPT变更入口。用户明确先完成开发和安装包，不执行手机测试；未配置Google OAuth/真实HTTPS或ChatGPT授权发布，未修改真实规划和复盘自动化。最终检查与交付见tests/ONLINE_VERIFICATION.md。
+
+## 2026-11-26 — Focus Exchange 初始化
+已创建独立私有原生 Google Sheets，位于 Planning State 同一文件夹；8 个工作表、Protocol 19 条规则，Schedule revision=0 未发布、Focus Modes 空快照。已读回全部表头及初始值、确认 owner-only；真实 ID 不写公开仓库。正式协议见 docs/FOCUS_EXCHANGE_PROTOCOL.md。未配置手机 Google OAuth、未改 Android 代码、未发布真实日程、未改23:30自动化。下一步按正式协议联调。
+
+## 2026-11-27 — Google 文件级授权实测
+用户自行完成Google Cloud配置，明确禁止computer-use，电脑网页均由用户操作。安装v0.4.1，使用Google Identity AuthorizationClient与drive.file原生文件选择器。手机返回CONNECTED；Google接口成功核对8表固定表头、读取Schedule初始未发布快照、写入并读回当前focus模式。连接工具独立读回模式revision=1及Sync State设备行。真实表ID、设备代号、令牌、白名单内容不入仓。自动执行、全天统计和上传仍关闭。无障碍当前关闭，后续自动专注验收等待用户恢复授权。
+Google日汇总按协议RAW幂等写入，未知项留空，质量保守标partial；详细轨迹、Catalog及Google表内清理尚未完成/未启用，不用估算伪充历史真实策略。25项逻辑单测在两变体通过、构建/Lint与权限审计通过；release无debug receiver。
+
+## 两段模拟计划与取消（USB观测）
+用户恢复无障碍后，ChatGPT连接工具在私有Schedule!A2发布revision1、两个各20秒的模拟任务，mode_id=focus；整份快照读回一致。手机自动取得revision1，在预定边界依次IDLE→ACTIVE→IDLE→ACTIVE→IDLE，planned_session与逻辑状态一致，未调用手动开始。观测间隔约2秒，不作为亚秒级延迟或实际拦截成功率证明。结束后发布revision2空快照并读回确认，再关闭armed；无真实计划被覆盖，全天统计未启用。Google授权和专注模式保留。锁屏/断网/重启、后台15分钟实际延迟、目标应用拦截及真实使用统计仍待后续验收。Google视觉渲染未检查（用户禁止computer-use）；仅通过API核对值与单元格格式，写入仅userEnteredValue。

@@ -36,6 +36,10 @@ class OnlineActivity : ComponentActivity() {
         var preview by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         LaunchedEffect(Unit) { while (true) { delay(1000); revision++ } }
+        LaunchedEffect(revision) {
+            val current = withContext(Dispatchers.IO) { SyncConfig(this@OnlineActivity).read() }
+            if (current != credentials) { credentials = current; endpoint = current?.endpoint ?: "" }
+        }
         fun setting(key: String, checked: Boolean) {
             val editor = plans.prefs.edit().putBoolean(key, checked)
             if (!checked && key == "usage_enabled") editor.putBoolean("usage_upload", false).putBoolean("usage_details_upload", false)
@@ -53,6 +57,7 @@ class OnlineActivity : ComponentActivity() {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             TextButton(onClick = { finish() }) { Text("返回计时主页") }
             Text("在线计划", style = MaterialTheme.typography.headlineSmall)
+            Button(onClick = { startActivity(android.content.Intent(this@OnlineActivity, GoogleConnectActivity::class.java)) }) { Text("连接 Google 私有交换表") }
             val plan = remember(revision) { plans.load() }
             Text("版本 ${plan?.revision ?: 0} · ${plans.prefs.getString("execution_status", "尚未取得计划")}")
             Text(plans.prefs.getString("sync_status", "尚未连接私有数据源").orEmpty())
@@ -77,7 +82,7 @@ class OnlineActivity : ComponentActivity() {
             }) { Text("恢复本段计划执行") }
             OutlinedTextField(endpoint, { endpoint = it }, label = { Text("私有 HTTPS 数据源") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(token, { token = it }, label = { Text(if (credentials != null) "新访问凭证（留空保留）" else "手机访问凭证") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Text("凭证保存在系统密钥库保护的本机存储；不上传GitHub。Google手机授权尚未配置，本版先支持受控HTTPS交换服务。")
+            Text("Google连接只授权你选中的私有表。下面的HTTPS地址与凭证用于其他受控交换服务，可留空。")
             Button(onClick = {
                 try { SyncConfig(this@OnlineActivity).save(endpoint, token.ifEmpty { credentials?.token ?: "" }); credentials = SyncConfig(this@OnlineActivity).read(); token = ""; SyncWork.request(this@OnlineActivity, true); message = "已保存，正在同步" }
                 catch (_: Exception) { message = "请检查HTTPS地址和访问凭证" }
@@ -102,8 +107,10 @@ class OnlineActivity : ComponentActivity() {
             val destination = credentials?.endpoint ?: "尚未配置目的地"
             Text("上传目的地：$destination")
             Row { Checkbox(plans.prefs.getBoolean("usage_upload", false), { setting("usage_upload", it); if (it) SyncWork.request(this@OnlineActivity, true) }, enabled = enabled && credentials != null); Text("允许上传日汇总（含按应用时长）") }
-            Row { Checkbox(plans.prefs.getBoolean("usage_details_upload", false), { setting("usage_details_upload", it) }, enabled = enabled && plans.prefs.getBoolean("usage_upload", false) && plans.prefs.getBoolean("usage_details", false)); Text("另外允许上传详细区间") }
-            Row { listOf(1, 7, 30).forEach { days -> FilterChip(selected = plans.prefs.getInt("usage_retention", 7) == days, onClick = { plans.prefs.edit().putInt("usage_retention", days).apply(); revision++ }, label = { Text("保留${days}天") }) } }
+            val google = GoogleAuthorization.isGoogle(credentials)
+            Row { Checkbox(plans.prefs.getBoolean("usage_details_upload", false), { setting("usage_details_upload", it) }, enabled = !google && enabled && plans.prefs.getBoolean("usage_upload", false) && plans.prefs.getBoolean("usage_details", false)); Text(if (google) "Google详细轨迹待历史策略记录适配，当前不上传" else "另外允许上传详细区间") }
+            Row { listOf(1, 7, 30).forEach { days -> FilterChip(selected = plans.prefs.getInt("usage_retention", 7) == days, onClick = { plans.prefs.edit().putInt("usage_retention", days).putBoolean("usage_prune_enabled", true).apply(); revision++ }, label = { Text("本地保留${days}天") }) } }
+            if (google) Text("点击保留天数启用本机自动清理。Google表内历史记录不会自动删除。")
             Text(plans.prefs.getString("usage_status", "尚未开启采集").orEmpty())
             Text(plans.prefs.getString("usage_upload_status", "尚未上传统计").orEmpty())
             TextButton(onClick = { scope.launch {
@@ -121,7 +128,7 @@ class OnlineActivity : ComponentActivity() {
             }
             TextButton(onClick = { reports = UsageCollector.reports(this@OnlineActivity); preview = true }) { Text("预览将上传的数据") }
             TextButton(onClick = { UsageCollector.clear(this@OnlineActivity); reports = emptyList(); revision++; SyncWork.schedule(this@OnlineActivity); message = "已关闭采集和上传，清除本机统计。云端已传数据需在私有服务单独删除。" }) { Text("停止并清除本机统计") }
-            TextButton(onClick = { scope.launch {
+            if (!google) TextButton(onClick = { scope.launch {
                 setting("usage_upload", false)
                 val current = SyncConfig(this@OnlineActivity).read()
                 val result = withContext(Dispatchers.IO) { runCatching { require(current != null); SyncWorker.deleteRemote(current) } }

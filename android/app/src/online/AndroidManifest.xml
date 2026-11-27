@@ -4,5 +4,6 @@
     <queries><package android:name="com.openai.chatgpt" /></queries>
     <application android:usesCleartextTraffic="false">
         <activity android:name=".OnlineActivity" android:exported="false" />
+        <activity android:name=".GoogleConnectActivity" android:exported="false" />
     </application>
 </manifest>
