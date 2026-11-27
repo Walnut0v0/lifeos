@@ -10,8 +10,8 @@ android {
         applicationId = "io.lifeos.focuslab"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "0.4.0-alpha"
+        versionCode = 31
+        versionName = "0.4.1-alpha"
     }
     flavorDimensions += "connectivity"
     productFlavors {
@@ -30,4 +30,5 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     "onlineImplementation"("androidx.work:work-runtime-ktx:2.10.1")
+    "onlineImplementation"("com.google.android.gms:play-services-auth:22.0.0")
 }

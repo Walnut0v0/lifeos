@@ -55,6 +55,10 @@ object IntegrationHooks {
         TextButton(onClick = { activity.startActivity(Intent(activity, OnlineActivity::class.java)) }) { Text("计划、统计与申请调整") }
     }
     fun debug(context: Context, intent: Intent): String? = when (intent.getStringExtra("operation")) {
+        "google_connect" -> {
+            context.startActivity(Intent(context, GoogleConnectActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            "GOOGLE_CONNECT_OPENED"
+        }
         "online_configure" -> {
             val raw = intent.getStringExtra("configuration") ?: error("Missing configuration")
             require(raw.length <= 4096)
@@ -79,6 +83,7 @@ object IntegrationHooks {
                 .put("sync_status", plans.prefs.getString("sync_status", ""))
                 .put("execution_status", plans.prefs.getString("execution_status", ""))
                 .put("service_connected", FocusAccessibilityService.live != null).put("usage_enabled", plans.prefs.getBoolean("usage_enabled", false))
+                .put("google_check", plans.prefs.getString("google_check", ""))
                 .put("usage_report_count", UsageCollector.reports(context).size).toString()
         }
         else -> null

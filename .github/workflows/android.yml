@@ -1,7 +1,7 @@
 name: Android verification
 on:
   push:
-    branches: [phase01-poc, phase02-whitelist, phase03-app-categories, phase04-online-plan]
+    branches: [phase01-poc, phase02-whitelist, phase03-app-categories, phase04-online-plan, phase05-google-sheets]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -42,12 +42,12 @@ jobs:
           python3 tools/audit.py $AUDIT android/app/build/outputs/apk/${FLAVOR}/debug/app-${FLAVOR}-debug.apk "$AAPT"
           python3 tools/check_release_manifest.py "$FLAVOR"
           mkdir -p deliverables
-          cp android/app/build/outputs/apk/${FLAVOR}/debug/app-${FLAVOR}-debug.apk deliverables/lifeos-${FLAVOR}-v0.4.0.apk
+          cp android/app/build/outputs/apk/${FLAVOR}/debug/app-${FLAVOR}-debug.apk deliverables/lifeos-${FLAVOR}-v0.4.1.apk
           cd deliverables
           sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lifeos-${{ matrix.flavor }}-v0.4.0
+          name: lifeos-${{ matrix.flavor }}-v0.4.1
           path: deliverables/
           retention-days: 7
   exchange:

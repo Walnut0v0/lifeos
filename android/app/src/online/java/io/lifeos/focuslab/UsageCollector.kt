@@ -32,7 +32,8 @@ object UsageCollector {
         val now = System.currentTimeMillis()
         val enabledAt = prefs.getLong("usage_since", now)
         if (enabledAt > now) { prefs.edit().putString("usage_status", "系统时间早于启用时间，暂不推算").apply(); return@synchronized }
-        val zone = ZoneId.systemDefault()
+        val google = GoogleAuthorization.isGoogle(SyncConfig(context).read())
+        val zone = if (google) ZoneId.of(FocusExchangeV1.REPORT_ZONE) else ZoneId.systemDefault()
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         val dayStart = today.minusDays(1).atStartOfDay(zone).toInstant().toEpochMilli().coerceAtLeast(enabledAt)
         // Recompute today/yesterday from system metadata for idempotence, including a warmup.
@@ -72,6 +73,13 @@ object UsageCollector {
                 .put("screen_state_unknown_ms", summary.screenUnknownMs).put("lock_state_unknown_ms", summary.lockUnknownMs)
                 .put("foreground_unknown_ms", summary.foregroundUnknownMs).put("quality", "most_recent_resumed_estimate; multiwindow_not_measured; current_categories")
                 .put("actual_enforced_ms", JSONObject.NULL).put("updated_at", Instant.ofEpochMilli(now).toString())
+            json.put("unlock_count_known", points.any { it.kind == UsageKind.LOCK || it.kind == UsageKind.UNLOCK })
+                .put("is_final", date < today)
+            val missing = JSONArray(summary.slices.filter { it.interactive == null || it.unlocked == null }.map {
+                JSONObject().put("start_at", Instant.ofEpochMilli(it.start).toString()).put("end_at", Instant.ofEpochMilli(it.end).toString())
+                    .put("reason", if (it.interactive == null) "SCREEN_STATE_UNKNOWN" else "LOCK_STATE_UNKNOWN")
+            })
+            json.put("missing_intervals", missing)
             val plan = PlanStore(context).load()
             val matched = mutableMapOf<String, Long>()
             val restricted = mutableMapOf<String, Long>()
@@ -95,7 +103,7 @@ object UsageCollector {
             catch (error: Exception) { file.failWrite(output); throw error }
         }
         val cutoff = today.minusDays((prefs.getInt("usage_retention", 7).coerceIn(1, 30) - 1).toLong())
-        directory(context).listFiles()?.filter { it.extension == "json" && it.name.take(10) < cutoff.toString() }?.forEach { it.delete() }
+        if (!google || prefs.getBoolean("usage_prune_enabled", false)) directory(context).listFiles()?.filter { it.extension == "json" && it.name.take(10) < cutoff.toString() }?.forEach { it.delete() }
         prefs.edit().putLong("last_collection", now).putString("usage_status", "已更新；未知区间单独列出，前台不等于注意力").apply()
     }
     fun reports(context: Context): List<JSONObject> = synchronized(lock) {
@@ -107,6 +115,7 @@ object UsageCollector {
         val prefs = PlanStore(context).prefs
         val details = prefs.getBoolean("usage_details", false) && prefs.getBoolean("usage_details_upload", false)
         reports(context).forEach { report ->
+            if (client is GoogleSheetsAdapter && report.optString("timezone") != FocusExchangeV1.REPORT_ZONE) return@forEach
             if (!prefs.getBoolean("usage_upload", false) || !prefs.getBoolean("usage_enabled", false)) return
             val intervals = report.optJSONArray("intervals")
             report.remove("intervals")
