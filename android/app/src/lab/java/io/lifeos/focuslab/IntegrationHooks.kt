@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.compose.runtime.Composable
 
 object IntegrationHooks {
+    fun watchesForeground(context: Context): Boolean = false
     fun resume(context: Context) { if (LabStore(context).session()?.planned == true) LabStore(context).stop("OFFLINE_VARIANT") }
     fun tick(context: Context) { if (LabStore(context).session()?.planned == true) LabStore(context).stop("OFFLINE_VARIANT") }
     fun system(context: Context, action: String?) = Unit

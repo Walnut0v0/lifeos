@@ -1,12 +1,13 @@
-# 当前任务 — Google Focus Exchange 实机接入
+# 当前任务 — 专注界面与后台执行改进
 
-按docs/FOCUS_EXCHANGE_PROTOCOL.md复用已有分类与白名单。用户明确禁止computer-use，电脑网页配置由用户本人完成；开发命令和授权ADB诊断继续可用。Google Cloud使用Workspace标准额度，不开通试用/账单、不绑卡。
+用户于2026-11-28授权调整首页、今日时间安排、时段圆环、全屏白名单、常用应用置顶与权限弹窗。分支codex/phase06-focus-ui，基于phase05-google-sheets；不自动合并main。
 
-- 已实现并实测：原生Google drive.file文件选择授权；私有表8表契约校验；Schedule未发布识别；手机模式focus写入/读回；Sync State更新。
-- 已实现待实测：Google日汇总RAW幂等写入，未知指标留空，Asia/Singapore报告日。采集/上传默认关闭。
-- 未实现/禁用：Sheets详细轨迹（真实历史策略）、Catalog同步、表内历史清理。
-- 本轮：用户已恢复无障碍，已用两段20秒模拟计划验证自动进入/退出，随后以revision2空计划取消并关闭自动执行；Google连接保留。
-- 25项逻辑测试两变体通过，构建/Lint/独立权限审计通过，release无debug receiver。
-- 真实表ID、账号、设备代号、令牌和白名单内容不入GitHub。Google授权状态可在本应用debug诊断读取，不读屏幕/节点或全局logcat。
+- 计时主页/覆盖层/通知显示HH:mm–HH:mm；圆环显示已进行比例，调度仍使用原绝对时间或单调截止时间。
+- 在线首页增加今日时间轴及任务卡，跨日任务按本机日期筛选，过期缓存明确提示。
+- 白名单单按钮打开全屏图标网格，可搜索。相机、支付宝、移动交通大学/移动交大、哈罗/哈啰优先；其余拼音与英文混排。除已受保护的系统相机外，不额外放行未选应用。
+- 无障碍“系统开关关闭”和“已授权未连接”分别诊断。缺少无障碍、使用情况访问、精确闹钟、通知时给出解释与用户操作入口，不自动授予。onInterrupt不再误当成撤权或结束会话；真正断连仍放行。
+- 开启自动执行后，用内存中的单一前台候选衔接到点边界，仍要求与窗口包名一致；不保存轨迹。锁屏/监测中断/时钟异常/缺权时丢弃证据。
+- 安装前已通过ADB确认连接及服务正常；首次ADB超时为电脑端daemon未启动，不能据此称手机未接好。未操作私人屏幕、节点或全局logcat；未改变真实计划及统计选择。
+- 最终构建/审计/安装结果见tests/UI_BACKGROUND_VERIFICATION.md。系统主动关闭无障碍的根因、长待机/清理/重启、全场景拦截率仍需实测。
 
-旧任务及能力边界参见NEXT_ONLINE_PLAN.md，main不自动合并；分支phase05-google-sheets。详情tests/GOOGLE_VERIFICATION.md、docs/GOOGLE_CONNECTION.md。
+保留Google文件级授权、原离线Lab、系统安全控制与应急解除。电脑网页操作仍由用户本人完成，禁止computer-use。
