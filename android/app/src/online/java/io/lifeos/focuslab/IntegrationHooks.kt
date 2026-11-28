@@ -47,12 +47,14 @@ object IntegrationHooks {
     }
     fun stopping(context: Context, code: String, planned: Boolean) = PlanRuntime.stopping(context, code, planned)
     fun allows(context: Context, packageName: String) = ChangeAccess.allows(packageName)
+    fun watchesForeground(context: Context): Boolean = PlanStore(context).armed
     @Composable fun Status(activity: Activity, pulse: Int) {
-        val plans = PlanStore(activity)
-        val decision = ScheduleEngine.resolve(plans.load(), System.currentTimeMillis())
-        decision.task?.let { Text(it.title.ifBlank { "计划专注" }) }
-        Text(plans.prefs.getString("execution_status", "尚未连接在线计划").orEmpty())
-        TextButton(onClick = { activity.startActivity(Intent(activity, OnlineActivity::class.java)) }) { Text("计划、统计与申请调整") }
+        val plans = androidx.compose.runtime.remember(activity) { PlanStore(activity) }
+        val now = System.currentTimeMillis()
+        val plan = androidx.compose.runtime.remember(pulse / 4) { plans.load() }
+        TodaySchedule(plan?.tasks.orEmpty(), now, plan == null || !ScheduleEngine.resolve(plan, now).expired)
+        Text(plans.prefs.getString("execution_status", "尚未连接在线计划").orEmpty(), style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { activity.startActivity(Intent(activity, OnlineActivity::class.java)) }) { Text("管理计划 · 同步与复盘") }
     }
     fun debug(context: Context, intent: Intent): String? = when (intent.getStringExtra("operation")) {
         "google_connect" -> {
@@ -82,7 +84,7 @@ object IntegrationHooks {
                 .put("phase", LabStore(context).phase().name).put("last_sync", plans.prefs.getLong("last_sync", 0))
                 .put("sync_status", plans.prefs.getString("sync_status", ""))
                 .put("execution_status", plans.prefs.getString("execution_status", ""))
-                .put("service_connected", FocusAccessibilityService.live != null).put("usage_enabled", plans.prefs.getBoolean("usage_enabled", false))
+                .put("accessibility_enabled", FocusPermissions.accessibilityEnabled(context)).put("service_connected", FocusAccessibilityService.live != null).put("usage_enabled", plans.prefs.getBoolean("usage_enabled", false))
                 .put("google_check", plans.prefs.getString("google_check", ""))
                 .put("usage_report_count", UsageCollector.reports(context).size).toString()
         }

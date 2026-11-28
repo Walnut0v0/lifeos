@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter
 class OnlineActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { Surface { Panel() } } }
+        setContent { LifeOsTheme { Surface { Panel() } } }
     }
     override fun onResume() { super.onResume(); IntegrationHooks.resume(this@OnlineActivity) }
     @Composable private fun Panel() {
@@ -34,12 +34,14 @@ class OnlineActivity : ComponentActivity() {
         var revision by remember { mutableIntStateOf(0) }
         var reports by remember { mutableStateOf(UsageCollector.reports(this@OnlineActivity)) }
         var preview by remember { mutableStateOf(false) }
+        var advanced by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         LaunchedEffect(Unit) { while (true) { delay(1000); revision++ } }
         LaunchedEffect(revision) {
             val current = withContext(Dispatchers.IO) { SyncConfig(this@OnlineActivity).read() }
             if (current != credentials) { credentials = current; endpoint = current?.endpoint ?: "" }
         }
+        PermissionPrompts(this@OnlineActivity, revision * 4, 0)
         fun setting(key: String, checked: Boolean) {
             val editor = plans.prefs.edit().putBoolean(key, checked)
             if (!checked && key == "usage_enabled") editor.putBoolean("usage_upload", false).putBoolean("usage_details_upload", false)
@@ -80,6 +82,8 @@ class OnlineActivity : ComponentActivity() {
             if (plans.prefs.getString("suppressed_task", "").orEmpty().isNotEmpty()) TextButton(onClick = {
                 plans.prefs.edit().remove("suppressed_task").commit(); PlanRuntime.reconcile(this@OnlineActivity, true); revision++
             }) { Text("恢复本段计划执行") }
+            TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "收起高级连接配置" else "其他私有服务连接（高级）") }
+            if (advanced) {
             OutlinedTextField(endpoint, { endpoint = it }, label = { Text("私有 HTTPS 数据源") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(token, { token = it }, label = { Text(if (credentials != null) "新访问凭证（留空保留）" else "手机访问凭证") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true)
             Text("Google连接只授权你选中的私有表。下面的HTTPS地址与凭证用于其他受控交换服务，可留空。")
@@ -87,6 +91,7 @@ class OnlineActivity : ComponentActivity() {
                 try { SyncConfig(this@OnlineActivity).save(endpoint, token.ifEmpty { credentials?.token ?: "" }); credentials = SyncConfig(this@OnlineActivity).read(); token = ""; SyncWork.request(this@OnlineActivity, true); message = "已保存，正在同步" }
                 catch (_: Exception) { message = "请检查HTTPS地址和访问凭证" }
             }) { Text("保存连接并同步") }
+            }
             TextButton(onClick = { SyncWork.request(this@OnlineActivity, true); message = "已请求更新，后台频率受系统限制" }) { Text("重新检查更新") }
             Text("后台约15分钟起检查，系统可能延迟；打开应用、解锁和网络恢复会尝试补同步。已缓存计划到点不依赖网络。")
             HorizontalDivider()

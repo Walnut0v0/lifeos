@@ -85,6 +85,9 @@ class LabStore(val context: Context) {
         val wasPlanned = try { JSONObject(prefs.getString("session", "{}") ?: "{}").optBoolean("planned", false) } catch (_: Exception) { false }
         IntegrationHooks.stopping(context, code, wasPlanned)
         ForegroundProbe.enabledUntilElapsed = 0L
+        // Armed automatic execution observes one current package across task boundaries.
+        // Resetting here during PLAN_REVISED would lose evidence for an app opened long ago.
+        if (!IntegrationHooks.watchesForeground(context)) ForegroundProbe.resetCurrent()
         prefs.edit().remove("session").remove("policy").commit()
         val alarms = context.getSystemService(AlarmManager::class.java)
         alarms.cancel(pending(1)); alarms.cancel(pending(2))
@@ -154,7 +157,7 @@ class LabStore(val context: Context) {
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getBroadcast(context, 3, Intent(context, ScheduleReceiver::class.java).setAction("STOP"), PendingIntent.FLAG_IMMUTABLE)
         try { n.notify(1, Notification.Builder(context, "lab").setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(if (isWhitelistSession) "正在专注 · ${countdownText(remainingMillis())}" else "LifeOS 测试已配置")
+            .setContentTitle(if (isWhitelistSession) "正在专注 · ${session()?.let { FocusPresentation.range(it.start, it.end) }.orEmpty()}" else "LifeOS 测试已配置")
             .setContentText(if (isWhitelistSession) "点此返回计时页，白名单应用可用" else "可随时打开应用或点击停止解除测试")
             .setContentIntent(open).apply { if (!isWhitelistSession) addAction(Notification.Action.Builder(null, "停止所有测试", stop).build()) }.build()) }
         catch (_: SecurityException) { log("NOTIFICATION_UNAVAILABLE") }
