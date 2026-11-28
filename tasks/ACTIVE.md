@@ -1,12 +1,15 @@
-# 当前任务 — Google Focus Exchange 实机接入
+# 当前任务 — LifeOS UI/UX 重构（Stage 1）
 
-按docs/FOCUS_EXCHANGE_PROTOCOL.md复用已有分类与白名单。用户明确禁止computer-use，电脑网页配置由用户本人完成；开发命令和授权ADB诊断继续可用。Google Cloud使用Workspace标准额度，不开通试用/账单、不绑卡。
+分支：ui-redesign，基于 phase05-google-sheets @ 5f500e6641b0029a34b2d11e524ae352b0656051。
 
-- 已实现并实测：原生Google drive.file文件选择授权；私有表8表契约校验；Schedule未发布识别；手机模式focus写入/读回；Sync State更新。
-- 已实现待实测：Google日汇总RAW幂等写入，未知指标留空，Asia/Singapore报告日。采集/上传默认关闭。
-- 未实现/禁用：Sheets详细轨迹（真实历史策略）、Catalog同步、表内历史清理。
-- 本轮：用户已恢复无障碍，已用两段20秒模拟计划验证自动进入/退出，随后以revision2空计划取消并关闭自动执行；Google连接保留。
-- 25项逻辑测试两变体通过，构建/Lint/独立权限审计通过，release无debug receiver。
-- 真实表ID、账号、设备代号、令牌和白名单内容不入GitHub。Google授权状态可在本应用debug诊断读取，不读屏幕/节点或全局logcat。
+执行入口：[UI_REDESIGN.md](UI_REDESIGN.md)。先读 AGENTS.md 和任务书列出的现有规范。
+本轮优先完成：
+- [ ] 审计现有页面、业务状态与安全/隐私入口，建立功能映射。
+- [ ] 实际调研 Material 3、Now in Android、Compose Samples、Vico 和可访问的设计资源，记录版本、许可及复用选择。
+- [ ] 制作自然简约、黑白极简、Material 3 Expressive 三套首页与专注页 Compose 原型。
+- [ ] 提供实际渲染预览；无法渲染时提供独立测试 APK 与限制说明。
+- [ ] 建立 docs/UI_REDESIGN.md 与原型对照说明，记录测试及尚未验证的项目。
+- [ ] 提交 Stage 1 成果，等待用户选定风格；不提前全量改造。
 
-旧任务及能力边界参见NEXT_ONLINE_PLAN.md，main不自动合并；分支phase05-google-sheets。详情tests/GOOGLE_VERIFICATION.md、docs/GOOGLE_CONNECTION.md。
+原功能接入任务及待验收项目保留于 [PHASE05_BASELINE.md](PHASE05_BASELINE.md)，不因本任务而视为完成。
+保留原 lab/online 隔离、隐私与安全约束、所有现有功能；不修改真实数据，不使用 computer-use，不自动合并 main 或原功能分支。
