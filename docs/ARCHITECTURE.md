@@ -44,3 +44,6 @@ FocusHome及无障碍计时覆盖层均提供白名单启动、普通退出10秒
 
 ## v0.4.0在线计划初版
 ScheduleEngine/Codec为纯绝对时间规则与完整快照校验；PlanStore AtomicFile持久化，SyncAdapter隔离HTTPS源。PlanRuntime在主线程重新判定当前任务，AlarmManager下一边界；手动会话仍单调时钟，计划会话显式planned且最长24小时，不因重启延长。锁屏不拉起Activity。WorkManager负责非精确同步与统计，缓存执行不等待网络。UsageTimeline纯逻辑重排去重/切分/未知状态，UsageCollector仅UsageStats必要事件与私有文件。IntegrationHooks由flavor提供，lab不引用网络或WorkManager。桥接服务仅单用户参考实现，稳定HTTPS与ChatGPT授权发布端尚待配置。
+
+## v0.4.2重连与暂停原因
+绝对计划的执行就绪状态和用户暂停决定分开。PLAN_PERMISSION_LOST、WHITELIST_PERMISSION_LOST、SERVICE_UNBOUND只停止当前管控并放行，不将整段任务记录成用户解除；已有自动执行许可且服务/使用访问真实恢复后，按原绝对起止重新执行，不延长截止时间。用户确认结束、应急结束、USER_STOP和执行故障继续抑制本段自动重启。PlanStopPolicy为两变体共享纯逻辑并有回归测试。

@@ -59,3 +59,19 @@ Google日汇总按协议RAW幂等写入，未知项留空，质量保守标parti
 
 ## 两段模拟计划与取消（USB观测）
 用户恢复无障碍后，ChatGPT连接工具在私有Schedule!A2发布revision1、两个各20秒的模拟任务，mode_id=focus；整份快照读回一致。手机自动取得revision1，在预定边界依次IDLE→ACTIVE→IDLE→ACTIVE→IDLE，planned_session与逻辑状态一致，未调用手动开始。观测间隔约2秒，不作为亚秒级延迟或实际拦截成功率证明。结束后发布revision2空快照并读回确认，再关闭armed；无真实计划被覆盖，全天统计未启用。Google授权和专注模式保留。锁屏/断网/重启、后台15分钟实际延迟、目标应用拦截及真实使用统计仍待后续验收。Google视觉渲染未检查（用户禁止computer-use）；仅通过API核对值与单元格格式，写入仅userEnteredValue。
+
+## 2026-11-28 — UI 重构任务准备
+用户授权将 UI 美化及开源组件复用任务写入 GitHub。独立 ui-redesign 分支从 phase05-google-sheets 的 5f500e6 建立；新增 tasks/UI_REDESIGN.md，ACTIVE.md 指向 Stage 1，原 Google 接入任务完整保留于 tasks/PHASE05_BASELINE.md。先调研 Material 3、Now in Android、Compose Samples、Vico 和可用设计参考，提供三套 Compose 原型及预览，用户确认后全量改造。继续遵守禁止 computer-use、隐私、权限、应急解除、两变体隔离及不自动合并约束。此次仅创建任务文档，未修改 Android 源码、依赖、私有 Google 数据或自动化；未执行构建、测试或真机验证。原 Phase05 待验收事项保持未完成。下一步由 Codex 在 ui-redesign 分支执行 Stage 1。
+
+## 2026-11-28 — UI Stage1原型交付
+已在ui-redesign按任务书完成入口审计、固定commit源码/Apache许可调研和独立debug原型。A自然、B黑白、C Material兼容探索，原生Compose既有依赖，无业务服务调用或系统权限；共享虚构状态，提供起止时段/圆环、今日时间轴、全屏白名单示意、深浅色/字号与缺权等九场景。正式app源对基线零改动。原型2项模型测试及Lint0错误0警告通过，基线25项测试两变体/构建/Lint/权限和release审计通过。无模拟器/镜像，未实际渲染截图或视觉验收；独立APK为明确回退，不伪造截图。USB安装首次取消，用户要求重试后Success，显式启动Status:ok。正在等待用户选风格，再继续全量迁移；没有覆盖原LifeOS。此前候选c64923c保存在codex/phase06-focus-ui，独立验证与待真机事项不混入Stage1结论。详见docs/UI_REDESIGN.md和tests/UI_REDESIGN_VERIFICATION.md。
+
+## 2026-11-28 — 时段主页与后台边界改进
+用户授权UI与权限引导改进，新增时段圆环、今日时间轴和任务卡、全屏可搜索白名单、指定常用应用置顶及拼音混排。两个flavor保持隔离。修正onInterrupt误结束会话；它不是权限关闭通知。对后台已打开超过5秒应用，增加连续的单一内存前台候选，与窗口包名一致后才拦截，任务切换不清除已授权自动执行的连续证据。无自动系统授权或永久保活机制。ADB重新启动daemon后已连接，安装前无障碍开关及服务均正常，当前未找到系统开关关闭的根因。未改真实计划和采集许可；测试与安装结果详见tests/UI_BACKGROUND_VERIFICATION.md。
+
+用户已在独立预览中选择A自然简约，授权进入Stage2。复用候选功能代码，不合并main或phase05。
+
+## A方案正式整合及升级重连修复
+用户在手机预览后选择A，整合真实主页/任务/时间轴/时段圆环、全屏白名单与拼音混排、前台权限提示、系统深浅色、原生覆盖层及固定应急入口，继续保留原业务。首次v0.4.2安装对照抓到PLAN_PERMISSION_LOST：系统无障碍开关和连接均已正常，但更新后短暂未绑定被旧逻辑记为本段用户解除。新PlanStopPolicy将暂时缺权/解绑与显式退出/故障区分，实际恢复就绪后继续原绝对时段；用户应急/确认结束仍抑制。最终32项回归与33号构建的安装结果见UI_BACKGROUND_VERIFICATION，不把首个包当最终包。没有自动重开系统授权或覆盖用户应急选择。
+
+最终补记：33号online包已USB覆盖安装并核对版本；Google和无障碍开关/连接保留，升级误暂停的原任务通过显式恢复回到ACTIVE（没有修改计划或延长截止）。本应用Activity重建两次均保持planned ACTIVE与授权/服务连接。固定虚构名称排序自检通过。源码8d8cc94的Actions 46128222153 lab/online/prototype/exchange均成功；PR #5草稿，不自动合并。真机断连自动恢复全过程、静止目标实际拦截、长期后台、视觉/TalkBack等未验收；最终哈希见UI_BACKGROUND_VERIFICATION。此后只补文档，不改已安装APK。

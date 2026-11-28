@@ -1,5 +1,8 @@
 package io.lifeos.focuslab
 
+import io.lifeos.focuslab.ui.theme.LifeOsTheme
+import io.lifeos.focuslab.ui.screens.home.FocusHome
+
 import android.Manifest
 import android.app.*
 import android.content.Intent
@@ -31,6 +34,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var store: LabStore
     private lateinit var experiments: CapabilityExperiments
     private var exportText = ""
+    private var launcherRequest by mutableIntStateOf(0)
+    private fun consumeLauncherIntent(value: Intent?) {
+        if (value?.getBooleanExtra("open_allowed_apps", false) == true) {
+            value.removeExtra("open_allowed_apps"); launcherRequest++
+        }
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); consumeLauncherIntent(intent) }
     private val saveReport = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) try { contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(exportText) } }
         catch (_: Exception) { store.log("EXPORT_FAILED") }
@@ -38,9 +48,10 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); store = LabStore(this)
+        consumeLauncherIntent(intent)
         experiments = CapabilityExperiments(this)
         experimentsRef = java.lang.ref.WeakReference(experiments)
-        setContent { MaterialTheme(colorScheme = lightColorScheme(primary = androidx.compose.ui.graphics.Color(0xFF245844), background = androidx.compose.ui.graphics.Color(0xFFF5F7F2), surface = androidx.compose.ui.graphics.Color(0xFFF5F7F2))) { Surface { AppRoot() } } }
+        setContent { LifeOsTheme { Surface { AppRoot() } } }
     }
     override fun onPause() { if (::experiments.isInitialized) experiments.removeOverlay(); super.onPause() }
     override fun onDestroy() {
@@ -62,7 +73,7 @@ class MainActivity : ComponentActivity() {
         var pulse by remember { mutableIntStateOf(0) }
         LaunchedEffect(Unit) { while (true) { delay(250); pulse++ } }
         val active = remember(pulse) { store.phase() == Phase.ACTIVE && store.isWhitelistSession }
-        if (!lab || active) FocusHome(this, store, active, pulse) { lab = true }
+        if (!lab || active) FocusHome(this, store, active, pulse, launcherRequest) { lab = true }
         else Column(Modifier.fillMaxSize()) {
             TextButton(onClick = { lab = false }) { Text("返回专注主页") }
             Box(Modifier.weight(1f)) { LabScreen() }

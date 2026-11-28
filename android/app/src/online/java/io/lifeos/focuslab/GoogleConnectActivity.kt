@@ -1,5 +1,7 @@
 package io.lifeos.focuslab
 
+import io.lifeos.focuslab.ui.theme.LifeOsTheme
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,7 +29,7 @@ class GoogleConnectActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { Surface { Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        setContent { LifeOsTheme { Surface { Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("连接 Google 交换表", style = MaterialTheme.typography.headlineSmall)
             Text(message)
             Button(enabled = !working, onClick = { authorize() }) { Text(if (working) "正在核对…" else "选择交换表并连接") }

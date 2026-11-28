@@ -10,6 +10,14 @@ class DebugReceiver : BroadcastReceiver() {
         val store = LabStore(context)
         try {
             when (intent.getStringExtra("operation")) {
+                "ui_order_self_test" -> {
+                    // Fixed invented labels only: no app inventory, settings or schedule mutations.
+                    val names = listOf("微信", "Zoom", "百度", "支付宝", "移动交通大学", "哈啰", "相机", "知乎", "爱读书", "Bing")
+                    resultData = try {
+                        if (AppDisplayOrder.ordered(names, { it }, { it }) == listOf("相机", "支付宝", "移动交通大学", "哈啰", "爱读书", "百度", "Bing", "微信", "知乎", "Zoom")) "UI_PINNING_AND_PINYIN_PASSED"
+                        else "UI_PINNING_AND_PINYIN_FAILED"
+                    } catch (_: Exception) { "UI_PINNING_AND_PINYIN_UNAVAILABLE" }
+                }
                 "classification_self_test" -> {
                     require(store.phase() != Phase.ACTIVE)
                     val prefs = context.getSharedPreferences("lab", Context.MODE_PRIVATE)

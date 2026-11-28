@@ -1,12 +1,26 @@
-# 当前任务 — Google Focus Exchange 实机接入
+# 当前任务 — A自然简约正式界面与后台修复
 
-按docs/FOCUS_EXCHANGE_PROTOCOL.md复用已有分类与白名单。用户明确禁止computer-use，电脑网页配置由用户本人完成；开发命令和授权ADB诊断继续可用。Google Cloud使用Workspace标准额度，不开通试用/账单、不绑卡。
+分支：ui-redesign，基于 phase05-google-sheets @ 5f500e6641b0029a34b2d11e524ae352b0656051。
 
-- 已实现并实测：原生Google drive.file文件选择授权；私有表8表契约校验；Schedule未发布识别；手机模式focus写入/读回；Sync State更新。
-- 已实现待实测：Google日汇总RAW幂等写入，未知指标留空，Asia/Singapore报告日。采集/上传默认关闭。
-- 未实现/禁用：Sheets详细轨迹（真实历史策略）、Catalog同步、表内历史清理。
-- 本轮：用户已恢复无障碍，已用两段20秒模拟计划验证自动进入/退出，随后以revision2空计划取消并关闭自动执行；Google连接保留。
-- 25项逻辑测试两变体通过，构建/Lint/独立权限审计通过，release无debug receiver。
-- 真实表ID、账号、设备代号、令牌和白名单内容不入GitHub。Google授权状态可在本应用debug诊断读取，不读屏幕/节点或全局logcat。
+执行入口：[UI_REDESIGN.md](UI_REDESIGN.md)。先读 AGENTS.md 和任务书列出的现有规范。
+本轮优先完成：
+- [x] 审计现有页面、业务状态与安全/隐私入口，建立功能映射。
+- [x] 实际调研 Material 3、Now in Android、Compose Samples、Vico 和可访问的设计资源，记录版本、许可及复用选择。
+- [x] 制作自然简约、黑白极简、Material 3 Expressive 三套首页与专注页 Compose 原型。
+- [x] 提供实际渲染预览；无法渲染时提供独立测试 APK 与限制说明。
+- [x] 建立 docs/UI_REDESIGN.md 与原型对照说明，记录测试及尚未验证的项目。
+- [x] Stage1已提交14406d0，独立预览已安装；用户明确选择A自然简约，进入Stage2。
 
-旧任务及能力边界参见NEXT_ONLINE_PLAN.md，main不自动合并；分支phase05-google-sheets。详情tests/GOOGLE_VERIFICATION.md、docs/GOOGLE_CONNECTION.md。
+原功能接入任务及待验收项目保留于 [PHASE05_BASELINE.md](PHASE05_BASELINE.md)，不因本任务而视为完成。
+保留原 lab/online 隔离、隐私与安全约束、所有现有功能；不修改真实数据，不使用 computer-use，不自动合并 main 或原功能分支。
+
+Stage1已交付独立debug应用io.lifeos.uipreview：A/B/C共享虚构状态，支持深浅色、字体缩放、九种状态、时段圆环和全屏白名单演示。两项模型测试、Lint0错误0警告、独立权限/依赖审计和v2签名通过；原业务25项测试两变体仍通过，正式app源零改动。原型实际渲染图未获得，按任务书回退独立APK，已USB安装并启动，视觉/TalkBack/交互待用户。已请求风格选择。此前功能/UI候选保存在codex/phase06-focus-ui@c64923c，不丢弃、不并入原型，不覆盖安装原LifeOS。
+
+## Stage2：用户已选A自然简约
+2026-11-28用户在手机独立预览中选择A，开始整合正式主页、时段圆环、今日时间轴、全屏白名单及权限提示，同时保留候选后台连续判断修复。最终构建/审计/手机安装结果待本轮追加；不得把原型启动当成正式界面或后台验收。
+
+正式本轮范围：ui/theme统一深浅色与系统栏；ui/components时段圆环/今日时间轴/全屏可搜索白名单；ui/screens/home真实任务与计时入口；权限前台弹窗、授权/断连区分；普通退出确认内和覆盖层固定应急入口。在线/离线隔离不变，无新增系统权限。后台仅对有效未解除计划保留内存单一前台候选；服务中断反馈不当作撤权，真正断连仍放行。最终APK结果见tests/UI_BACKGROUND_VERIFICATION.md。Stage3独立统计/监管/导航迁移尚未实现，不删除现有入口。
+
+最终33号包：两变体各32项单测、构建/Lint/权限/release/签名通过，Lab47/online90警告；最终APK/哈希已生成。首次32号安装对照复现PLAN_PERMISSION_LOST短暂重连被误记解除，33号已拆分PlanStopPolicy并测试；当前因ADB设备列表为空等待重连，尚未安装33号，不伪造真机结果。
+
+最终状态：用户处理USB模式后33号online包已覆盖安装，版本确认33；无障碍开关/服务和Google连接正常。仅恢复升级误暂停的当前绝对任务，ACTIVE；本应用Activity重建两次均保持授权/连接/会话。虚构排序自检通过。源码8d8cc94的Actions 46128222153四任务全部成功，PR #5为草稿。长待机、真实目标到点拦截、断连自动恢复全过程和Stage3仍按报告列待验收，不将本轮标为全场景通过。
