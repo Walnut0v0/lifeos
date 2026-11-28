@@ -37,3 +37,11 @@ lifeos-online-v0.4.2.apk SHA256 1cb4add93040d6a7df0e6c0fc207fdca60e191bf3dd19263
 
 ## 当前安装状态
 首次整合的32号包已安装并启动，虚构应用名置顶/拼音英文混排设备自检通过。修复PLAN_PERMISSION_LOST的最终33号包已通过32项测试两变体、最终审计和签名，但首次覆盖尝试返回no devices found，随后ADB列表为空；等待用户重连，当前不能声称33号包已安装或重连修复已真机通过。
+
+## 最终真机复核与云端结果
+- PASS（安装/状态）：USB连接恢复后最终33号online包安装Success，pm报告versionCode33，MainActivity启动成功。无障碍系统开关和服务均正常、Google连接保留；没有变更既有统计许可。
+- PASS（显式恢复）：仅恢复刚才由升级PLAN_PERMISSION_LOST误暂停的现有绝对任务，返回CURRENT_TASK_RESUMED，planned=true、phase=ACTIVE；不修改真实日程或任务截止。没有清除用户主动应急/确认结束的选择。
+- PASS（有限重开回归）：以NEW_TASK|CLEAR_TASK重建本应用Activity两次，两次均保持系统开关开启、服务连接、planned会话ACTIVE。不是强停、后台清理或长待机试验。
+- PASS（虚构排序自检）：只用固定虚构名称的设备端置顶/拼音英文混排测试返回UI_PINNING_AND_PINYIN_PASSED，不修改应用规则或使用真实应用清单。
+- PASS（源码CI）：8d8cc94719f07ab74db022a7b6b8db3f528261c8的GitHub Actions 46128222153中lab/online/独立原型/exchange全部成功：https://github.com/Walnut0v0/lifeos/actions/runs/46128222153 。后续本轮仅补文档记录，APK源码和最终哈希未变。
+- 仍未验证：真正服务断连后的自动重绑定全过程、长待机/锁屏/重启、当前静止目标的实际拦截率、视觉/TalkBack和触控验收。两次重开和主动恢复不能代替这些结论。
