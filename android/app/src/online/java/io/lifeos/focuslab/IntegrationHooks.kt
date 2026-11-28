@@ -1,5 +1,7 @@
 package io.lifeos.focuslab
 
+import io.lifeos.focuslab.ui.components.TodaySchedule
+
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -47,7 +49,20 @@ object IntegrationHooks {
     }
     fun stopping(context: Context, code: String, planned: Boolean) = PlanRuntime.stopping(context, code, planned)
     fun allows(context: Context, packageName: String) = ChangeAccess.allows(packageName)
-    fun watchesForeground(context: Context): Boolean = PlanStore(context).armed
+    fun focusTitle(context: Context): String? {
+        val session = LabStore(context).session()?.takeIf { it.planned } ?: return null
+        return ScheduleEngine.resolve(PlanStore(context).load(), System.currentTimeMillis()).task
+            ?.takeIf { it.start == session.start && it.end == session.end }?.title?.ifBlank { "计划专注" }
+    }
+    fun watchesForeground(context: Context): Boolean {
+        val plans = PlanStore(context)
+        if (!plans.armed) return false
+        val plan = plans.load() ?: return false
+        val now = System.currentTimeMillis()
+        if (ScheduleEngine.resolve(plan, now).expired) return false
+        val suppressed = plans.prefs.getString("suppressed_task", "")
+        return plan.tasks.any { it.mode == "focus" && it.end > now && PlanRuntime.suppressedKey(it) != suppressed }
+    }
     @Composable fun Status(activity: Activity, pulse: Int) {
         val plans = androidx.compose.runtime.remember(activity) { PlanStore(activity) }
         val now = System.currentTimeMillis()
@@ -76,6 +91,17 @@ object IntegrationHooks {
             "AUTO_EXECUTION_UPDATED"
         }
         "online_sync" -> { SyncWork.request(context, true); "SYNC_QUEUED" }
+        "online_resume_current" -> {
+            // Same explicit action as the visible "恢复本段计划执行" button, guarded by DUMP in debug.
+            val plans = PlanStore(context)
+            if (!plans.armed || FocusAccessibilityService.live == null || !usageGranted(context) ||
+                ScheduleEngine.resolve(plans.load(), System.currentTimeMillis()).task == null) "CURRENT_TASK_NOT_READY"
+            else {
+                plans.prefs.edit().remove("suppressed_task").commit()
+                PlanRuntime.reconcile(context, true)
+                "CURRENT_TASK_RESUMED"
+            }
+        }
         "online_status" -> {
             val plans = PlanStore(context)
             val decision = ScheduleEngine.resolve(plans.load(), System.currentTimeMillis())

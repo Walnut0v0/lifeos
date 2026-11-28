@@ -1,5 +1,7 @@
 # UI Stage1 验证（2026-11-28）
 
+本报告记录14406d0的Stage1结果；用户随后已选择A并进入Stage2，正式更新包以UI_BACKGROUND_VERIFICATION.md为准。
+
 ## 构建和单元测试
 
 - PASS：独立原型:ui-prototype:assembleDebug、testDebugUnitTest、lintDebug；2项模型测试通过，Lint 0错误/0警告。
@@ -22,6 +24,6 @@
 
 ## 交付与下一阶段
 
-独立包outputs/lifeos-ui-preview-stage1.apk，SHA256：${summary.sha256}。APK不申请业务权限，支持A自然/B黑白/C Material兼容方案、九种模拟状态、深浅色与字号切换。用户选定后再全量改造；不合并main或phase05。
+独立包outputs/lifeos-ui-preview-stage1.apk，SHA256：ff0ba914bd0521044a02de27c3abb1e1cb98fee354826365a752aad9c601510b。APK不申请业务权限，支持A自然/B黑白/C Material兼容方案、九种模拟状态、深浅色与字号切换。用户选定后再全量改造；不合并main或phase05。
 
 用户原先要求的功能/UI候选保存在codex/phase06-focus-ui，尚未安装/未并入原型分支。候选的构建结果另见该分支UI_BACKGROUND_VERIFICATION，不混为正式原型或真机验收。

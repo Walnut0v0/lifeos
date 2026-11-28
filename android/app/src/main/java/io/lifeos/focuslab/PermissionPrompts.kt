@@ -13,6 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 
 object FocusPermissions {
     fun accessibilityEnabled(activity: android.content.Context): Boolean = try {
@@ -30,6 +33,13 @@ object FocusPermissions {
 
 /** One prompt per missing capability per screen visit; never grants or changes system settings. */
 @Composable fun PermissionPrompts(activity: Activity, pulse: Int, requested: Int) {
+    var resumed by remember { mutableStateOf((activity as? LifecycleOwner)?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true) }
+    DisposableEffect(activity) {
+        val owner = activity as? LifecycleOwner
+        val observer = LifecycleEventObserver { _, _ -> resumed = owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true }
+        owner?.lifecycle?.addObserver(observer)
+        onDispose { owner?.lifecycle?.removeObserver(observer) }
+    }
     val enabled = remember(pulse / 4) { FocusPermissions.accessibilityEnabled(activity) }
     val connected = FocusAccessibilityService.live != null
     val usage = remember(pulse / 4) { usageGranted(activity) }
@@ -41,16 +51,21 @@ object FocusPermissions {
     var dialog by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf(false) }
     LaunchedEffect(requested) { if (requested > 0) shown = emptySet() }
-    LaunchedEffect(enabled, connected, usage, exact, notifications, shown) {
+    LaunchedEffect(enabled, connected, usage, exact, notifications, shown, resumed) {
+        if (!resumed) return@LaunchedEffect
         delay(1500) // Give an already-authorized service time to reconnect before suggesting action.
-        if (dialog == null) dialog = listOfNotNull(
+        val missing = listOfNotNull(
             if (!connected) if (enabled) "reconnect" else "accessibility" else null,
             if (!usage) "usage" else null,
             if (!exact) "alarm" else null,
             if (!notifications) "notifications" else null
-        ).firstOrNull { it !in shown }
+        )
+        // A slow system rebind can complete while this prompt is visible.
+        // Remove stale guidance instead of asking the user to grant an existing permission again.
+        if (dialog !in missing) dialog = null
+        if (dialog == null) dialog = missing.firstOrNull { it !in shown }
     }
-    val kind = dialog ?: return
+    val kind = dialog?.takeIf { resumed } ?: return
     fun close() { shown = shown + kind; dialog = null; error = false }
     val explanation = when (kind) {
         "accessibility" -> "需要你在系统页面开启 LifeOS 的无障碍服务，才能识别并拦截受限应用。只使用应用切换信息，不读取页面内容。"
@@ -74,5 +89,12 @@ object FocusPermissions {
                 close()
             } catch (_: Exception) { error = true }
         }) { Text(if (kind == "notifications") "允许通知" else "前往授权") } },
-        dismissButton = { TextButton(onClick = { close() }) { Text("稍后") } })
+        dismissButton = { androidx.compose.foundation.layout.Column {
+            TextButton(onClick = {
+                close(); shown = setOf("reconnect", "accessibility", "usage", "alarm", "notifications")
+            }) { Text("稍后") }
+            if (LabStore(activity).phase() == Phase.ACTIVE) TextButton(onClick = {
+                LabStore(activity).stop("WHITELIST_EMERGENCY_STOP"); close()
+            }) { Text("应急立即解除", color = MaterialTheme.colorScheme.error) }
+        } })
 }

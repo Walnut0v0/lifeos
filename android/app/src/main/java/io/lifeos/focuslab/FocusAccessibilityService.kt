@@ -162,12 +162,12 @@ class FocusAccessibilityService : AccessibilityService() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             val dp = resources.displayMetrics.density
-            setPadding((22 * dp).toInt(), (20 * dp).toInt(), (22 * dp).toInt(), (20 * dp).toInt()); setBackgroundColor(Color.rgb(245, 247, 242))
+            setPadding((22 * dp).toInt(), (20 * dp).toInt(), (22 * dp).toInt(), (20 * dp).toInt()); setBackgroundColor(if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) Color.rgb(23, 34, 29) else Color.rgb(245, 247, 243))
             if (whitelistMode) {
-                addView(TextView(context).apply { text = "正在专注"; textSize = 22f; setTextColor(Color.BLACK) })
+                addView(TextView(context).apply { text = "正在专注"; textSize = 22f; setTextColor(if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) Color.rgb(233, 236, 232) else Color.rgb(32, 39, 34)) })
                 overlayRing = FocusRingView(context)
                 addView(overlayRing, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (minOf(240, (resources.configuration.screenHeightDp - 300).coerceAtLeast(100)) * resources.displayMetrics.density).toInt()))
-                addView(TextView(context).apply { text = "需要用到的应用，都在白名单里"; textSize = 14f; setTextColor(Color.DKGRAY); gravity = Gravity.CENTER })
+                addView(TextView(context).apply { text = "需要用到的应用，都在白名单里"; textSize = 14f; setTextColor(if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) Color.rgb(186, 195, 188) else Color.rgb(86, 99, 91)); gravity = Gravity.CENTER })
                 addView(Button(context).apply { text = "打开白名单应用"; setOnClickListener {
                     try {
                         startActivity(android.content.Intent(this@FocusAccessibilityService, MainActivity::class.java).putExtra("open_allowed_apps", true).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -195,7 +195,25 @@ class FocusAccessibilityService : AccessibilityService() {
         }
         val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
-        val content = ScrollView(this).apply { isFillViewport = true; addView(layout) }
+        val dark = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val background = if (dark) Color.rgb(23, 34, 29) else Color.rgb(245, 247, 243)
+        val ink = if (dark) Color.rgb(178, 208, 190) else Color.rgb(49, 92, 75)
+        if (whitelistMode) for (i in 0 until layout.childCount) {
+            (layout.getChildAt(i) as? Button)?.apply {
+                isAllCaps = false; minHeight = (48 * resources.displayMetrics.density).toInt()
+                backgroundTintList = android.content.res.ColorStateList.valueOf(if (dark) Color.rgb(48, 70, 58) else Color.rgb(225, 236, 227))
+                setTextColor(if (text.toString().contains("应急")) if (dark) Color.rgb(255, 180, 171) else Color.rgb(160, 48, 40) else ink)
+            }
+        }
+        val content: View = if (whitelistMode) {
+            val emergency = layout.getChildAt(layout.childCount - 1)
+            layout.removeView(emergency)
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; setBackgroundColor(background)
+                addView(ScrollView(context).apply { isFillViewport = true; addView(layout) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+                addView(emergency, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
+        } else ScrollView(this).apply { isFillViewport = true; addView(layout) }
         getSystemService(WindowManager::class.java).addView(content, params)
         overlay = content; overlayAt = SystemClock.elapsedRealtime()
         // Assign an event source to OUR View to obtain its window metadata. Never read a node/source.

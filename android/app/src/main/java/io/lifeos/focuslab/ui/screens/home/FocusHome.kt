@@ -1,4 +1,8 @@
-package io.lifeos.focuslab
+package io.lifeos.focuslab.ui.screens.home
+
+import io.lifeos.focuslab.*
+import io.lifeos.focuslab.ui.components.*
+import io.lifeos.focuslab.ui.theme.*
 
 import android.app.Activity
 import android.content.Intent
@@ -51,7 +55,10 @@ import kotlinx.coroutines.withContext
         text = { Text(if (exitWait > 0) "请等 ${(exitWait + 999) / 1000} 秒再确认。这段专注仍在继续。" else "确认后，本段将解除。你也可以回去继续。") },
         confirmButton = { TextButton(enabled = exitWait == 0L, onClick = {
             if (exitAt > 0 && SystemClock.elapsedRealtime() >= exitAt) { store.stop("WHITELIST_CONFIRMED_EXIT"); exitAt = 0 }
-        }) { Text("确认结束") } }, dismissButton = { TextButton(onClick = { exitAt = 0 }) { Text("继续专注") } })
+        }) { Text("确认结束") } }, dismissButton = { Column {
+            TextButton(onClick = { exitAt = 0 }) { Text("继续专注") }
+            TextButton(onClick = { store.stop("WHITELIST_EMERGENCY_STOP"); exitAt = 0 }) { Text("应急立即解除", color = MaterialTheme.colorScheme.error) }
+        } })
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -70,13 +77,14 @@ import kotlinx.coroutines.withContext
         } else {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (active && session != null) {
+                    Text(IntegrationHooks.focusTitle(activity) ?: "临时专注", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = FocusInk)
                     FocusClock(session, remaining)
                     Button(onClick = { launcher = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), contentPadding = PaddingValues(18.dp)) { Text("打开白名单应用", style = MaterialTheme.typography.titleMedium) }
                     Text("应用用完后，可从通知回到这里。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IntegrationHooks.Status(activity, pulse)
                 if (!active) {
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(24.dp)) {
+                    Card(colors = CardDefaults.cardColors(containerColor = FocusCard), shape = RoundedCornerShape(24.dp)) {
                         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("开始一段专注", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text("临时专注，最长 30 分钟。在线计划到点自动进入。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

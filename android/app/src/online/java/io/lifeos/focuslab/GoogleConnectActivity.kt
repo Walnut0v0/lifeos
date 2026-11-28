@@ -1,5 +1,7 @@
 package io.lifeos.focuslab
 
+import io.lifeos.focuslab.ui.theme.LifeOsTheme
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent

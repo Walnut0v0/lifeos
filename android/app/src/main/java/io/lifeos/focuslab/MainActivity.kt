@@ -1,5 +1,8 @@
 package io.lifeos.focuslab
 
+import io.lifeos.focuslab.ui.theme.LifeOsTheme
+import io.lifeos.focuslab.ui.screens.home.FocusHome
+
 import android.Manifest
 import android.app.*
 import android.content.Intent

@@ -18,7 +18,7 @@ object PlanRuntime {
     }
     fun suppressedKey(task: PlannedTask) = "${task.id}:${task.start}"
     fun stopping(context: Context, code: String, planned: Boolean) {
-        if ((!planned && code != "USER_STOP") || code in setOf("PLAN_BOUNDARY", "PLAN_REVISED", "SESSION_EXPIRED", "EXPIRED_OR_INVALID", "REPLACED")) return
+        if (!PlanStopPolicy.suppresses(code, planned)) return
         val plans = PlanStore(context)
         ScheduleEngine.resolve(plans.load(), System.currentTimeMillis()).task?.let {
             plans.prefs.edit().putString("suppressed_task", suppressedKey(it)).putString("execution_status", "本段已解除，结束前不自动重启").commit()

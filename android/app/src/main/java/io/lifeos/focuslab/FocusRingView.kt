@@ -20,8 +20,9 @@ class FocusRingView(context: Context) : View(context) {
         val cx = width / 2f; val cy = height / 2f
         val rect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
         paint.style = Paint.Style.STROKE; paint.strokeWidth = 8 * dp; paint.strokeCap = Paint.Cap.ROUND
-        paint.color = Color.rgb(219, 235, 228); canvas.drawArc(rect, -90f, 360f, false, paint)
-        paint.color = Color.rgb(35, 75, 70)
+        val dark = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        paint.color = if (dark) Color.rgb(48, 70, 58) else Color.rgb(225, 236, 227); canvas.drawArc(rect, -90f, 360f, false, paint)
+        paint.color = if (dark) Color.rgb(178, 208, 190) else Color.rgb(49, 92, 75)
         canvas.drawArc(rect, -90f, 360f * FocusPresentation.progress(session.duration, store.remainingMillis()), false, paint)
         paint.style = Paint.Style.FILL; paint.textAlign = Paint.Align.CENTER
         paint.textSize = 14 * resources.displayMetrics.scaledDensity
