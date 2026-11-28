@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="LifeOS UI 预览" android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:icon="@drawable/ic_preview" android:allowBackup="false" android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/extraction_rules" android:supportsRtl="true" />
+</manifest>

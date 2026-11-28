@@ -62,3 +62,6 @@ Google日汇总按协议RAW幂等写入，未知项留空，质量保守标parti
 
 ## 2026-11-28 — UI 重构任务准备
 用户授权将 UI 美化及开源组件复用任务写入 GitHub。独立 ui-redesign 分支从 phase05-google-sheets 的 5f500e6 建立；新增 tasks/UI_REDESIGN.md，ACTIVE.md 指向 Stage 1，原 Google 接入任务完整保留于 tasks/PHASE05_BASELINE.md。先调研 Material 3、Now in Android、Compose Samples、Vico 和可用设计参考，提供三套 Compose 原型及预览，用户确认后全量改造。继续遵守禁止 computer-use、隐私、权限、应急解除、两变体隔离及不自动合并约束。此次仅创建任务文档，未修改 Android 源码、依赖、私有 Google 数据或自动化；未执行构建、测试或真机验证。原 Phase05 待验收事项保持未完成。下一步由 Codex 在 ui-redesign 分支执行 Stage 1。
+
+## 2026-11-28 — UI Stage1原型交付
+已在ui-redesign按任务书完成入口审计、固定commit源码/Apache许可调研和独立debug原型。A自然、B黑白、C Material兼容探索，原生Compose既有依赖，无业务服务调用或系统权限；共享虚构状态，提供起止时段/圆环、今日时间轴、全屏白名单示意、深浅色/字号与缺权等九场景。正式app源对基线零改动。原型2项模型测试及Lint0错误0警告通过，基线25项测试两变体/构建/Lint/权限和release审计通过。无模拟器/镜像，未实际渲染截图或视觉验收；独立APK为明确回退，不伪造截图。USB安装首次取消，用户要求重试后Success，显式启动Status:ok。正在等待用户选风格，再继续全量迁移；没有覆盖原LifeOS。此前候选c64923c保存在codex/phase06-focus-ui，独立验证与待真机事项不混入Stage1结论。详见docs/UI_REDESIGN.md和tests/UI_REDESIGN_VERIFICATION.md。
