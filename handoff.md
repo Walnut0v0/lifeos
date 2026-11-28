@@ -59,3 +59,6 @@ Google日汇总按协议RAW幂等写入，未知项留空，质量保守标parti
 
 ## 两段模拟计划与取消（USB观测）
 用户恢复无障碍后，ChatGPT连接工具在私有Schedule!A2发布revision1、两个各20秒的模拟任务，mode_id=focus；整份快照读回一致。手机自动取得revision1，在预定边界依次IDLE→ACTIVE→IDLE→ACTIVE→IDLE，planned_session与逻辑状态一致，未调用手动开始。观测间隔约2秒，不作为亚秒级延迟或实际拦截成功率证明。结束后发布revision2空快照并读回确认，再关闭armed；无真实计划被覆盖，全天统计未启用。Google授权和专注模式保留。锁屏/断网/重启、后台15分钟实际延迟、目标应用拦截及真实使用统计仍待后续验收。Google视觉渲染未检查（用户禁止computer-use）；仅通过API核对值与单元格格式，写入仅userEnteredValue。
+
+## 2026-11-28 — UI 重构任务准备
+用户授权将 UI 美化及开源组件复用任务写入 GitHub。独立 ui-redesign 分支从 phase05-google-sheets 的 5f500e6 建立；新增 tasks/UI_REDESIGN.md，ACTIVE.md 指向 Stage 1，原 Google 接入任务完整保留于 tasks/PHASE05_BASELINE.md。先调研 Material 3、Now in Android、Compose Samples、Vico 和可用设计参考，提供三套 Compose 原型及预览，用户确认后全量改造。继续遵守禁止 computer-use、隐私、权限、应急解除、两变体隔离及不自动合并约束。此次仅创建任务文档，未修改 Android 源码、依赖、私有 Google 数据或自动化；未执行构建、测试或真机验证。原 Phase05 待验收事项保持未完成。下一步由 Codex 在 ui-redesign 分支执行 Stage 1。
